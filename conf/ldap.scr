@@ -29,5 +29,5 @@
 .ldap
 
 `ag_ldap(
-  LdapAgent()
+  `LdapAgent()
 )
