@@ -14,22 +14,17 @@
 #include <scr/SCRAgent.h>
 #include <scr/SCRInterpreter.h>
 
-// ldapcpplib includes:
 #include <LDAPConnection.h>
 #include <LDAPException.h>
 #include <LDAPReferralException.h>
 #include <LDAPAttributeList.h>
 #include <LDAPAttribute.h>
 
+#include <LDAPSchema.h>
+
 #define DEFAULT_PORT 389
 #define ANSWER	42
 #define MAX_LENGTH_ID 5
-
-#include <map>
-#include <vector>
-
-using std::map;
-using std::vector;
 
 /**
  * @short An interface class between YaST2 and Ldap Agent
@@ -52,6 +47,7 @@ private:
 
     LDAPConnection *ldap;
     LDAPConstraints *cons;
+    LDAPSchema *schema;
 
     YCPMap  users,
 	    users_by_name,
@@ -74,7 +70,16 @@ private:
     int getIntValue ( const YCPMap map, const string key, int deflt);
     bool getBoolValue (const YCPMap map, const string key);
     YCPList getListValue (const YCPMap map, const string key);
+
+    /**
+     * converts YCPList to StringList object
+     */
     StringList ycplist2stringlist (YCPList l);
+    
+    /**
+     * converts StringList object to YCPList value
+     */
+    YCPList stringlist2ycplist (StringList sl);
 
     YCPMap getGroupEntry (LDAPEntry *entry);
     YCPMap getUserEntry (LDAPEntry *entry);

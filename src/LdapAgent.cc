@@ -33,7 +33,7 @@ YCPString addBlanks (int uid)
  */
 LdapAgent::LdapAgent() : SCRAgent()
 {
-    ldap = new LDAPConnection ();
+    schema = NULL;
 }
 
 /**
@@ -47,6 +47,9 @@ LdapAgent::~LdapAgent()
     }
     if (cons) {
 	delete cons;
+    }
+    if (schema) {
+	delete schema;
     }
 }
 
@@ -108,13 +111,10 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	YCPList list;
 	// get the values of current attribute:
 	const StringList sl = i->getValues();
+	YCPList list = stringlist2ycplist (sl);
 
-	for (StringList::const_iterator n = sl.begin(); n != sl.end(); n++) {
-	    list->add(YCPString(*n));
-	}
 	if (single_values && sl.size() == 1)
 	    value = YCPString (*(sl.begin()));
 	else
@@ -150,7 +150,7 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 	}
 	delete entry;
     }
-    delete entries;
+    
     return ret;
 }
 
@@ -162,12 +162,12 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	YCPList list;
 	string key = i->getName();
 	string userlist;
 	
 	// get the values of current attribute:
 	const StringList sl = i->getValues();
+	YCPList list = stringlist2ycplist (sl);
 	
 	// translate some keys for users-module usability
 	// all other attributes have the same name as in LDAP schema
@@ -175,14 +175,12 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
 	    key = "gid";
 	else if (key == "cn")
 	    key = "groupname";
-	else if (key == "memberUid")
+//	else if (key == "memberUid") //FIXME "member"
+	else if (key == "member")
 	{
 	    key = "userlist";
 	}
 
-	for (StringList::const_iterator n = sl.begin(); n != sl.end(); n++) {
-	    list->add (YCPString (*n));
-	}
 	if (sl.size() > 1 || key == "userlist")
 	{
 	    value = YCPList (list);
@@ -213,12 +211,12 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	YCPList list;
 	string key = i->getName();
 	string userlist;
 	
 	// get the values of current attribute:
 	const StringList sl = i->getValues();
+	YCPList list = stringlist2ycplist (sl);
 	
 	// translate some keys for users-module usability
 	// all other attributes have the same name as in LDAP schema
@@ -228,7 +226,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	    key = "gid";
 	else if (key == "cn")
 	    key = "fullname";
-	else if (key == "uid") // from object config: searchUri?
+	else if (key == "uid") // TODO from object config: namingAttribute
 	    key = "username";
 	else if (key == "homeDirectory")
 	    key = "home";
@@ -238,9 +236,6 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	// TODO what about shadow entries?
 	if (sl.size() > 1)
 	{
-	    for (StringList::const_iterator n = sl.begin(); n != sl.end();n++){
-		list->add (YCPString (*n));
-	    }
 	    value = YCPList (list);
 	}
 	else
@@ -269,6 +264,16 @@ StringList LdapAgent::ycplist2stringlist (YCPList l)
     }
     return sl;
 }
+
+YCPList LdapAgent::stringlist2ycplist (StringList sl)
+{
+    YCPList l;
+    for (StringList::const_iterator n = sl.begin(); n != sl.end();n++){
+	l->add (YCPString (*n));
+    }
+    return l;
+}
+
 
 /**
  * creates attributes for new LDAP object and fills their values 
@@ -366,7 +371,7 @@ YCPValue LdapAgent::Dir(const YCPPath& path)
  */
 YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 {
-    y2milestone("path in Read: '%s'.", path->toString().c_str());
+    y2debug ("path in Read: '%s'.", path->toString().c_str());
     YCPValue ret = YCPVoid();
 	
     YCPMap argmap;
@@ -375,7 +380,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 
     if (!ldap_initialized) {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
-	ldap_error = "initialize";
+	ldap_error = "init";
 	return YCPVoid();
     }
 	
@@ -392,6 +397,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 	    ldap_error_code = 0;
 	    return retmap;
 	}
+
 	/**
 	 * generic LDAP search command
 	 * Read(.ldap.search, <search_map>) -> result list/map of objects
@@ -411,9 +417,16 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 	    // when true, one-item values are returned as string, not
 	    // as list with one value (default is false = always list)
    	    bool single_values	= getBoolValue (argmap, "single_values");
+	    // when true, only list of DN's will be returned
+	    bool dn_only	= getBoolValue (argmap, "dn_only");
+	    // when true, no error message is written when object was not found
+	    // (empty list/map is returned)
+	    bool not_found_ok	= getBoolValue (argmap, "not_found_ok");
  
 	    StringList attrs = ycplist2stringlist(getListValue(argmap,"attrs"));
 			
+	    y2debug ("(search call) base:'%s', filter:'%s', scope:'%i'",
+		    base_dn.c_str(), filter.c_str(), scope);
 	    // do the search call
 	    LDAPSearchResults* entries = NULL;
 	    try {
@@ -421,8 +434,17 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 		    base_dn, scope, filter, attrs, attrsOnly, cons);
 	    }
 	    catch  (LDAPException e) {
-		debug_exception (e, "searching");
-		return ret;
+		if (not_found_ok && e.getResultCode() == 32)
+		{
+		    y2debug ("object not found");
+		    if (return_map) return YCPMap();
+		    else	    return YCPList();
+		}
+		else
+		{
+		    debug_exception (e, "searching");
+		    return ret;
+		}
             }
 
 	    // return value is list or map of entries
@@ -437,8 +459,10 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 		    try {
 			entry = entries->getNext();
 			if (entry != 0) {
-//			    y2internal ("dn: %s", entry->getDN().c_str());
-			    if (return_map) {
+			    y2debug ("dn: %s", entry->getDN().c_str());
+			    if (dn_only)
+				retlist->add (YCPString (entry->getDN()));
+			    else if (return_map) {
 				retmap->add (YCPString (entry->getDN()),
 				    getSearchedEntry (entry, single_values));
 			    }
@@ -482,66 +506,130 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
     else if (path->length() == 2) {
 
 	/**
+	 * get the map of object class with given name
+	 * Read(.ldap.schema.oc, $[ "name": name]) -> map
+	 */
+	if (PC(0) == "schema" && (PC(1) == "object_class" || PC(1) == "oc"))  {
+
+	    if (!schema) {
+		y2error ("Schema not read! Use Execute(.ldap.schema) before.");
+		return ret;
+	    }
+
+	    string name		= getValue (argmap, "name");
+	    YCPMap ret;
+	    if (name == "") {
+		y2error ("'name' attribute missing!");
+		return ret;
+	    }
+
+	    LDAPObjClass oc = schema->getObjectClassByName (name);
+	    if (oc.getName() != "")
+	    {
+		ret->add (YCPString ("oid"), YCPString (oc.getOid()));
+		ret->add (YCPString ("desc"), YCPString (oc.getDesc()));
+		ret->add (YCPString ("must"), stringlist2ycplist(oc.getMust()));
+		ret->add (YCPString ("may"), stringlist2ycplist (oc.getMay()));
+		ret->add (YCPString ("sup"), stringlist2ycplist (oc.getSup()));
+	    }
+	    else {
+		y2error ("No such objectClass: '%s'", name.c_str());
+		ldap_error = "oc_not_found";
+	    }
+
+	    return ret;
+	}
+	/**
+	 * get the map of attribute type with given name
+	 * Read(.ldap.schema.at, $[ "name": name]) -> map
+	 */
+	else if (PC(0) == "schema" && (PC(1)=="attr_types" || PC(1) == "at")) {
+	    
+	    if (!schema) {
+		y2error ("Schema not read! Use Execute(.ldap.schema) first.");
+		return ret;
+	    }
+	    string name		= getValue (argmap, "name");
+	    YCPMap ret;
+	    if (name == "") {
+		y2error ("'name' attribute missing!");
+		return ret;
+	    }
+
+	    LDAPAttrType at = schema->getAttributeTypeByName (name);
+	    if (at.getName() != "")
+	    {
+		ret->add (YCPString ("oid"), YCPString (at.getOid()));
+		ret->add (YCPString ("desc"), YCPString (at.getDesc()));
+		ret->add (YCPString ("single"), YCPBoolean (at.isSingle()));
+	    }
+	    else {
+		y2error ("No such attributeType: '%s'", name.c_str());
+		ldap_error = "at_not_found";
+	    }
+	    return ret;
+	}
+	/**
 	 * get the mapping of usernames to uid's (used for users module)
 	 * Read(.ldap.users.by_name) -> map
 	 */
-	if (PC(0) == "users" && PC(1) == "by_name") {
+	else if (PC(0) == "users" && PC(1) == "by_name") {
 	    return users_by_name;
 	}
 	/**
 	 * get the list of home directories (used for users module)
 	 * Read(.ldap.users.homes) -> list of homes
 	 */
-	if (PC(0) == "users" && PC(1) == "homes") {
+	else if (PC(0) == "users" && PC(1) == "homes") {
 	    return homelist;
 	}
 	/**
 	 * get the list of UID's (used for users module)
 	 * Read(.ldap.users.uids) -> list
 	 */
-	if (PC(0) == "users" && PC(1) == "uids") {
+	else if (PC(0) == "users" && PC(1) == "uids") {
 	    return uidlist;
 	}
 	/**
 	 * get the list of user names (used for users module)
 	 * Read(.ldap.users.usernames) -> list
 	 */
-	if (PC(0) == "users" && PC(1) == "usernames") {
+	else if (PC(0) == "users" && PC(1) == "usernames") {
 	    return usernamelist;
 	}
 	/**
 	 * get the items for user table (used for users module)
 	 * Read(.ldap.users.itemlist) -> list of items
 	 */
-	if (PC(0) == "users" && PC(1) == "itemlist") {
+	else if (PC(0) == "users" && PC(1) == "itemlist") {
 	    return users_itemlist;
 	}
 	/**
 	 * get the map of groups indexed by group names (used for users module)
 	 * Read(.ldap.groups.by_name) -> map
 	 */
-	if (PC(0) == "groups" && PC(1) == "by_name") {
+	else if (PC(0) == "groups" && PC(1) == "by_name") {
 	    return groups_by_name;
 	}
 	/**
 	 * get the list of GID's (used for users module)
 	 * Read(.ldap.groups.gids) -> list
 	 */
-	if (PC(0) == "groups" && PC(1) == "gids") {
+	else if (PC(0) == "groups" && PC(1) == "gids") {
 	    return gidlist;
 	}
 	/**
 	 * get the list of group names (used for users module)
 	 * Read(.ldap.groups.groupnames) -> list
 	 */
-	if (PC(0) == "groups" && PC(1) == "groupnames") {
+	else if (PC(0) == "groups" && PC(1) == "groupnames") {
 	    return groupnamelist;
 	}
 	/**
 	 * get the items for group table (used for users module)
 	 * Read(.ldap.groups.itemlist) -> list of items
 	 */
-	if (PC(0) == "groups" && PC(1) == "itemlist") {
+	else if (PC(0) == "groups" && PC(1) == "itemlist") {
 	    return groups_itemlist;
 	}
 	else {
@@ -560,7 +648,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
        const YCPValue& arg2)
 {
-    y2milestone("path in Write: '%s'.", path->toString().c_str());
+    y2debug ("path in Write: '%s'.", path->toString().c_str());
 
     YCPValue ret = YCPBoolean(true);
     
@@ -572,7 +660,7 @@ YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 
     if (!ldap_initialized) {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
-	ldap_error = "initialize";
+	ldap_error = "init";
 	return YCPBoolean (false);
     }
 
@@ -593,6 +681,7 @@ YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    LDAPAttributeList* attrs = new LDAPAttributeList();
 	    generate_attr_list (attrs, argmap2);
 
+	    y2debug ("(add call) dn:'%s'", dn.c_str());
 	    LDAPEntry* entry = new LDAPEntry (dn, attrs);
 	    try {
 		ldap->add(entry);
@@ -638,6 +727,7 @@ YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    LDAPModList *modlist = new LDAPModList();
 	    generate_mod_list (modlist, argmap2, attrs);
 
+	    y2debug ("(modify call) dn:'%s'", dn.c_str());
 	    try {
 		ldap->modify (dn, modlist);
 	    }
@@ -673,6 +763,7 @@ YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap_error = "missing_dn";
 		return YCPBoolean (false);
 	    }
+	    y2debug ("(delete call) dn:'%s'", dn.c_str());
 	    try {
 		ldap->del (dn);
 	    }
@@ -698,7 +789,7 @@ YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	const YCPValue& arg2)
 {
-    y2milestone("path in Execute: '%s'.", path->toString().c_str());
+    y2debug ("path in Execute: '%s'.", path->toString().c_str());
     YCPValue ret = YCPBoolean (true);
 
     YCPMap argmap;
@@ -726,7 +817,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	if (!ldap || !cons)
 	{
 	    y2error ("Error while initializing connection object");
-	    ldap_error = "initialize";
+	    ldap_error = "init";
 	    return YCPBoolean (false);
 	}
 	ldap_initialized = true;
@@ -734,7 +825,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
     }
     if (!ldap_initialized) {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
-	ldap_error = "initialize";
+	ldap_error = "init";
 	return YCPBoolean (false);
     }
 	
@@ -761,6 +852,38 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	else if (PC(0) == "unbind") {
 	    ldap->unbind();
 	    return YCPBoolean(true);
+	}
+	/**
+	 * Initialize schema: read and parse it
+	 */
+	else if (PC(0) == "schema") {
+	    string schema_dn	= getValue (argmap, "schema_dn");
+	    schema = new LDAPSchema ();
+
+	    StringList sl;
+	    sl.add ("objectClasses");
+	    sl.add ("attributeTypes");
+	    LDAPSearchResults* entries = NULL;
+	    try {
+		entries = ldap->search (schema_dn, 0, "objectClass=*", sl);
+	    }
+	    catch  (LDAPException e) {
+		debug_exception (e, "searching");
+		return YCPBoolean (true);
+            }
+	    // go throught result and fill schema object
+	    if (entries != 0) {
+		LDAPEntry* entry = entries->getNext();
+		if (entry != 0) {
+		    const LDAPAttributeList *al= entry->getAttributes();
+		    schema->setObjectClasses (al->getAttributeByName
+			   ("objectClasses")->getValues());
+		    schema->setAttributeTypes (al->getAttributeByName
+			   ("attributeTypes")->getValues());
+		}
+		delete entry;
+	    }
+	    return YCPBoolean (true);
 	}
 	else {
 	   y2error("Wrong path '%s' in Execute().", path->toString().c_str());
@@ -801,6 +924,21 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		debug_exception (e, "searching");
 		return YCPBoolean (false);
             }
+
+	    // initialize the maps/lists to be filled
+	    users = YCPMap();
+	    users_by_name = YCPMap();
+	    groups = YCPMap();
+	    groups_by_name = YCPMap();
+
+	    users_itemlist = YCPList();
+	    uidlist = YCPList();
+	    homelist = YCPList();
+	    usernamelist = YCPList();
+	    groups_itemlist = YCPList();
+	    groupnamelist = YCPList();
+	    gidlist = YCPList();
+
 	    // now generate group map (to use with users)
 	    if (entries != 0) {
 	    
@@ -826,6 +964,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    for (int i=0; i < ul->size(); i++) {
 			// for each user in userlist add this group to the
 			// map of type "user->his groups"
+			// FIXME "user" is whole DN for groupOfNames!
 			string user = ul->value(i)->asString()->value();
 			if (grouplists.find (user) != grouplists.end())
 			    grouplists [user] += ",";
