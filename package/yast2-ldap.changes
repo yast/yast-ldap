@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Wed Feb 25 09:52:55 CET 2004 - jsuchome@suse.cz
+
+- convert string-type values to integers if possible
+
+-------------------------------------------------------------------
 Wed Feb 11 16:28:11 CET 2004 - jsuchome@suse.cz
 
 - attributes "uid" (for users) and "cn" (for groups) allowed only

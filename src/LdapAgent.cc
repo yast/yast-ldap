@@ -71,10 +71,15 @@ string LdapAgent::getValue (const YCPMap map, const string key)
  */
 int LdapAgent::getIntValue (const YCPMap map, const string key, int deflt)
 {
-    if (!map->value(YCPString(key)).isNull() && map->value(YCPString(key))->isInteger())
+    if (!map->value(YCPString(key)).isNull() && map->value(YCPString(key))->isInteger()) {
 	return map->value(YCPString(key))->asInteger()->value(); 
-    else
-	return deflt;
+    }
+    else if (!map->value(YCPString(key)).isNull() &&
+	     map->value(YCPString(key))->isString()) {
+	YCPInteger i (map->value(YCPString(key))->asString()->value().c_str());
+	return i->value();
+    }
+    return deflt;
 }
 
 /*
@@ -782,7 +787,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    if (new_dn != "") {
 		dn = new_dn;
 	    }
-	    y2internal ("(modify call) dn:'%s'", dn.c_str());
+	    y2debug ("(modify call) dn:'%s'", dn.c_str());
 	    try {
 		ldap->modify (dn, modlist);
 	    }
