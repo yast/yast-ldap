@@ -246,7 +246,12 @@ StringList LdapAgent::ycplist2stringlist (YCPList l)
 {
     StringList sl;
     for (int i=0; i < l->size(); i++) {
-	sl.add (l->value(i)->asString()->value());
+	if (l.value(i)->isInteger()) {
+	    sl.add (l->value(i)->toString());
+	}
+	else {
+	    sl.add (l->value(i)->asString()->value());
+	}
     }
     return sl;
 }
@@ -276,6 +281,9 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 		    continue;
 		new_attr.addValue (i.value()->asString()->value());
 	    }
+	    else if (i.value()->isInteger()) {
+		new_attr.addValue (i.value()->toString());
+	    }
 	    else if (i.value()->isList()) {
 		if (i.value()->asList()->isEmpty())
 		    continue;
@@ -289,7 +297,7 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 		
 /**
  * creates list of modifications for LDAP object
- * for removing attribute, use give it empty value
+ * for removing attribute, give it empty value
  */
 void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue attrs)
 {
@@ -304,8 +312,14 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 		// check if attribute is present
 		present = !attrs->asMap()->value(YCPString (key)).isNull();
 	    }
-	    if (i.value()->isString()) {
-		string val = i.value()->asString()->value();
+	    if (i.value()->isString() || i.value()->isInteger()) {
+		string val;
+		if (i.value()->isInteger()) {
+		    val = i.value()->toString();
+		}
+		else {
+		    val = i.value()->asString()->value();
+		}
 		if (val == "") {
 		    if (!present) {
 			y2warning ("No such attribute '%s'", key.c_str());
@@ -314,7 +328,7 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 		    op = LDAPModification::OP_DELETE;
 		}
 		else
-		    attr.addValue (i.value()->asString()->value());
+		    attr.addValue (val);
 	    }
 	    else if (i.value()->isList()) {
 		if (i.value()->asList()->isEmpty()) {

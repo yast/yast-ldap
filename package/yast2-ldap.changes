@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Tue Feb 10 18:15:23 CET 2004 - jsuchome@suse.cz
+
+- check for integer values and convert then to string
+
+-------------------------------------------------------------------
 Tue Feb  3 19:20:02 CET 2004 - jsuchome@suse.cz
 
 - updated for new Users module
