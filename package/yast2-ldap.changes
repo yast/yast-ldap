@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Mon Mar 29 17:13:41 CEST 2004 - jsuchome@suse.cz
+
+- more on binary values: enable multi valued attributes 
+  (-> List of Byteblocks)
+- 2.9.8
+
+-------------------------------------------------------------------
 Thu Mar 25 18:11:54 CET 2004 - jsuchome@suse.cz
 
 - fixed adding new entry containing attribute with binary value

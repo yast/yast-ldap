@@ -134,13 +134,21 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 	YCPList list = stringlist2ycplist (sl);
 
 	string key = i->getName();
+	// list of binary values
 	// ------------ FIXME: properly check if value is binary ------------
 	if (key.find (";binary") != string::npos) {
-	    y2warning ("binary value!");
 	    BerValue **val = i->getBerValues();
-	    // FIXME I take only first value now...
-	    BerValue *one_val = val[0];
-	    value = YCPByteblock ((const unsigned char*) one_val->bv_val, one_val->bv_len);
+	    YCPList listvalue;
+	    for (int j=0; j < i->getNumValues (); j++) {
+		BerValue *one_val = val[j];
+		listvalue->add (YCPByteblock ((const unsigned char*) one_val->bv_val, one_val->bv_len));
+	    }
+	    if (single_values && i->getNumValues () == 1) {
+		value	= listvalue->value(0);
+	    }
+	    else {
+		value = listvalue;
+	    }
 	    ber_bvecfree(val);
 	}
 	// -------------------------------------------------------------------
@@ -295,6 +303,7 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 {
     for (YCPMapIterator i = map->begin(); i != map->end(); i++) {
 	if (i.key()->isString()) {
+	    string key = i.key()->asString()->value();
 	    // add a new attribute and its value to entry
 	    LDAPAttribute new_attr;
 	    new_attr.setName (i.key()->asString()->value());
@@ -322,8 +331,25 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 	    else if (i.value()->isList()) {
 		if (i.value()->asList()->isEmpty())
 		    continue;
-		// list of strings/integers
-		new_attr.setValues (ycplist2stringlist (i.value()->asList()));
+		// list of binary values...
+		if (key.find (";binary") != string::npos) {
+
+		    for (int j=0; j < i.value()->asList()->size(); j++) {
+			YCPByteblock data = i.value()->asList()->value(j)->asByteblock();
+			BerValue *val = (BerValue*) malloc(sizeof(BerValue));
+
+			val->bv_len = data->size();
+			val->bv_val = (char*) malloc (sizeof(char)*(data->size()+1));
+			memcpy (val->bv_val, data->value(), data->size());
+
+			new_attr.addValue (val);
+		    	ber_bvfree (val);
+		    }
+		}
+		else {
+		    // list of strings/integers
+		    new_attr.setValues(ycplist2stringlist(i.value()->asList()));
+		}
 	    }
 	    else continue;
 	    attrs->addAttribute (new_attr);
@@ -374,13 +400,27 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 		    }
 		    op = LDAPModification::OP_DELETE;
 		}
-		else
-		{
+		// list of binary values...
+		else if (key.find (";binary") != string::npos) {
+
+		    for (int j=0; j < i.value()->asList()->size(); j++) {
+			YCPByteblock data = i.value()->asList()->value(j)->asByteblock();
+			BerValue *val = (BerValue*) malloc(sizeof(BerValue));
+
+			val->bv_len = data->size();
+			val->bv_val = (char*) malloc (sizeof(char)*(data->size()+1));
+			memcpy (val->bv_val, data->value(), data->size());
+
+			attr.addValue (val);
+		    	ber_bvfree (val);
+		    }
+		}
+		// list of strings
+		else {
 		    attr.setValues (ycplist2stringlist (i.value()->asList()));
 		}
 	    }
 	    else if (i.value()->isByteblock ()) {
-		// ------------------------- FIXME -------------------------
 		YCPByteblock data = i.value()->asByteblock();
 
 		BerValue *val = (BerValue*) malloc(sizeof(BerValue));
@@ -392,7 +432,6 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 
 		attr.addValue (val);
 		ber_bvfree (val);
-		// ------------------------- FIXME -------------------------
 	    }
 	    else continue;
 	    modlist->addModification (LDAPModification (attr, op));
