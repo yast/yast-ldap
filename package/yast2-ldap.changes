@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Mar 19 14:57:21 CET 2004 - mvidner@suse.cz
+
+- added AGENT_LIBADD so that agents work from standalone Perl
+
+-------------------------------------------------------------------
 Mon Mar 15 11:24:21 CET 2004 - jsuchome@suse.cz
 
 - do not change LDAP keys for yast2-users usage 
