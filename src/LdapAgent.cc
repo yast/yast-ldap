@@ -175,7 +175,7 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 	entries = ldap->search (dn, 0, "objectclass=*", StringList(), true);
     }
     catch  (LDAPException e) {
-        debug_exception (e, "searching for attributes");
+        debug_exception (e, "searching for attributes (with dn=" + dn + ")");
 	return ret;
     }
     // go throught result and generate return value
@@ -439,11 +439,11 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
     }
 }
 
-void LdapAgent::debug_exception (LDAPException e, char* action)
+void LdapAgent::debug_exception (LDAPException e, string action)
 {
     ldap_error = e.getResultMsg();
     ldap_error_code = e.getResultCode();
-    y2error ("ldap error while %s (%i): %s", action, ldap_error_code,
+    y2error ("ldap error while %s (%i): %s", action.c_str(), ldap_error_code,
 	    ldap_error.c_str());
     if (e.getServerMsg() != "") {
 	y2error ("additional info: %s", e.getServerMsg().c_str());
@@ -540,7 +540,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 		}
 		else
 		{
-		    debug_exception (e, "searching");
+		    debug_exception (e, "searching for " + base_dn);
 		    return ret;
 		}
             }
@@ -808,7 +808,7 @@ YCPBoolean LdapAgent::deleteSubTree (string dn) {
 			ldap->del (entry->getDN());
 		    }
 		    catch (LDAPException e) {
-			debug_exception (e, "deleting");
+			debug_exception (e, "deleting entry " + entry->getDN());
 			delete entry;
 			return YCPBoolean (false);
 		    }
@@ -819,7 +819,7 @@ YCPBoolean LdapAgent::deleteSubTree (string dn) {
         } catch (LDAPException e) {
             delete res;
             delete entry;
-	    debug_exception (e, "searching for subtree");
+	    debug_exception (e, "searching for subtree of " + dn);
 	    return YCPBoolean (false);
         }
     }
@@ -872,14 +872,14 @@ YCPBoolean LdapAgent::copyOneEntry (string dn, string new_dn) {
 		ldap->add (entry);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "copying");
+		debug_exception (e, "adding " + new_dn);
 		delete entries;
 		return YCPBoolean (false);
 	    }
 	}
     } catch (LDAPException e) {
         delete entries;
-	debug_exception (e, "searching");
+	debug_exception (e, "searching for " + dn);
 	return YCPBoolean (false);
     }
     return YCPBoolean (true);
@@ -935,25 +935,25 @@ YCPBoolean LdapAgent::moveWithSubtree (string dn, string new_dn, string parent_d
 		ldap->del (dn);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "deleting");
+		debug_exception (e, "deleting entry" + dn);
 		return YCPBoolean (false);
 	    }
    	}
 	else {
 	    // 1b no children, call rename
-	    string rdn		= new_dn.substr (0, dn.find (","));
+	    string rdn		= new_dn.substr (0, new_dn.find (","));
 	    try {
 		ldap->rename (dn, rdn, true, parent_dn);
 	    }
 	    catch (LDAPException e) {
 		delete entries;
-		debug_exception (e, "renaming");
+		debug_exception (e, "renaming " + dn + " to " + new_dn);
 		return YCPBoolean (false);
 	    }
 	}
     } catch (LDAPException e) {
         delete entries;
-	debug_exception (e, "searching for subtree");
+	debug_exception (e, "searching for subtree of " + dn);
 	return YCPBoolean (false);
     }
     return YCPBoolean (true);
@@ -1004,7 +1004,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap->add(entry);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "adding");
+		debug_exception (e, "adding " + dn);
 		ret = YCPBoolean (false);
 	    }
 	    delete attrs;
@@ -1051,7 +1051,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    else {	
 		string rdn	= getValue (argmap, "rdn");
 		if (rdn == "" && new_dn != "") {
-		    rdn		= new_dn.substr (0, dn.find (","));
+		    rdn		= new_dn.substr (0, new_dn.find (","));
 		}
 		if (rdn != "") {
 		    bool delOldRDN	= getBoolValue (argmap, "delOldRDN");
@@ -1059,7 +1059,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 			ldap->rename (dn, rdn, delOldRDN, newParentDN);
 		    }
 		    catch (LDAPException e) {
-			debug_exception (e, "renaming");
+			debug_exception (e, "renaming " + dn + " to " + rdn);
 			return YCPBoolean (false);
 		    }
 		}
@@ -1082,7 +1082,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap->modify (dn, modlist);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "modifying");
+		debug_exception (e, "modifying " + dn);
 		delete modlist;
 		return YCPBoolean (false);
 	    }
@@ -1112,7 +1112,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap->del (dn);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "deleting");
+		debug_exception (e, "deleting " + dn);
 		return YCPBoolean (false);
 	    }
 	    return ret;
@@ -1172,10 +1172,12 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    int error = ldap->start_tls ();
 	    // check if starting TLS failed
 	    if (error != 0) {
+		y2warning ("TLS cannot be started");
 		// return an error
 		if (tls == "yes") {
 		    ldap_error_code	= error;
 		    ldap_error		= string (ldap_err2string (error));
+		    y2error ("%i: %s", ldap_error_code, ldap_error.c_str());
 		    return YCPBoolean (false);
 		}
 		// "try" -> start again, but without tls
@@ -1213,7 +1215,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		ldap->bind (bind_dn, bind_pw, cons);
 	    }
 	    catch (LDAPException e) {
-		debug_exception (e, "binding");
+		debug_exception (e, "binding with " + bind_dn);
 		return YCPBoolean (false);
 	    }
 	    return YCPBoolean(true);
@@ -1237,7 +1239,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		entries = ldap->search (schema_dn, 0, "objectclass=*", sl);
 	    }
 	    catch  (LDAPException e) {
-		debug_exception (e, "searching");
+		debug_exception (e, "searching for " + schema_dn);
 		return YCPBoolean (true);
             }
 	    // go throught result and fill schema object
@@ -1313,10 +1315,10 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    catch  (LDAPException e) {
 		if (not_found_ok && e.getResultCode() == 32) {
-		    y2warning ("object not found");
+		    y2warning ("groups not found");
 		}
 		else {
-		    debug_exception (e, "searching");
+		    debug_exception (e, "searching for " + group_base);
 		    return YCPBoolean (false);
 		}
             }
@@ -1410,8 +1412,13 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		       user_attrs, false, cons);
 	    }
 	    catch  (LDAPException e) {
-		debug_exception (e, "searching");
-		return YCPBoolean (false);
+		if (not_found_ok && e.getResultCode() == 32) {
+		    y2warning ("users not found");
+		}
+		else {
+		    debug_exception (e, "searching for " + user_base);
+		    return YCPBoolean (false);
+		}
             }
 
 	    // go through user entries and generate maps

@@ -117,7 +117,7 @@ private:
      */
     YCPBoolean copyOneEntry (string dn, string new_dn);
  
-    void debug_exception (LDAPException e, char* action);
+    void debug_exception (LDAPException e, string action);
 
     /**
      * creates attributes for new LDAP object and fills their values 

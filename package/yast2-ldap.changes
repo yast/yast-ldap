@@ -1,4 +1,27 @@
 -------------------------------------------------------------------
+Mon May 17 17:34:11 CEST 2004 - jsuchome@suse.cz
+
+- enhanced error logging
+- 2.9.15
+
+-------------------------------------------------------------------
+Wed May 12 10:56:26 CEST 2004 - jsuchome@suse.cz
+
+- fix of 'rdn' generating during rename (#40420)
+- 2.9.14
+
+-------------------------------------------------------------------
+Wed May  5 21:03:00 CEST 2004 - jsuchome@suse.cz
+
+- do not return error, when no user was found
+- 2.9.13
+
+-------------------------------------------------------------------
+Thu Apr 22 15:31:33 CEST 2004 - jsuchome@suse.cz
+
+- 2.9.12
+
+-------------------------------------------------------------------
 Wed Apr 21 10:29:04 CEST 2004 - jsuchome@suse.cz
 
 - enable recursive delete (#39185) and rename (#39193)
