@@ -1,0 +1,9 @@
+This is a TODO file for the Ldap SCR agent.
+----------------------------------------------
+$Id$
+
+TODO:
+-----
+
+- schema handling
+- document API

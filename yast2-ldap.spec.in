@@ -1,0 +1,25 @@
+@HEADER-COMMENT@
+# neededforbuild gpp libgpp libxcrypt libxcrypt-devel yast2-devel-packages ldapcpplib openldap2-devel cyrus-sasl2-devel
+
+@HEADER@
+Summary:	SCR agent for accessing LDAP.
+Requires: 	ldapcpplib
+
+%description
+-
+
+@PREP@
+
+@BUILD@
+
+@INSTALL@
+
+@CLEAN@
+
+%files
+%defattr(-,root,root)
+@scrconfdir@/*.scr
+@plugindir@/libpy2ag_ldap.so.*
+@plugindir@/libpy2ag_ldap.so
+@plugindir@/libpy2ag_ldap.la
+%doc @docdir@

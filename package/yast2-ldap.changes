@@ -1,0 +1,7 @@
+-------------------------------------------------------------------
+Wed May 28 08:59:16 2003 - jsuchome@suse.cz
+
+- Initial version
+- Enables generic search/add/modify/delete calls
+- Special calls used by yast2-users module
+

@@ -1,0 +1,33 @@
+/**
+ * File:	ldap.scr
+ * Summary:	Ldap agent
+ * Author:	Jiri Suchomel <jsuchome@suse.cz>
+ * Access:	read / write / execute
+ * See:		man ldap.conf (5), agent autodocs
+ *
+ * Example:
+ *	Execute (.ldap.init, $[
+ *	    "hostname": "localhost",
+ *	    "port":	389])
+ *	(true)
+ *
+ *	Execute (.ldap.bind, $[
+ *	    "bind_dn":	"uid=manager,dc=suse,dc=cz",
+ *	    "bind_pw":	password])
+ *	(true)
+ *
+ *	Read (.ldap.search, $[
+ *	    "base_dn":  "ou=people,dc=suse,dc=cz",
+ *	    "filter":   "objectClass=posixAccount",
+ *	    "attrs":    [ "uid", "cn" ],
+ *	    "scope":    2, // = sub ])
+ *	(list of maps)
+ *
+ * $Id$
+ *
+ */
+.ldap
+
+`ag_ldap(
+  LdapAgent()
+)

@@ -1,0 +1,12 @@
+#
+# Makefile.am for .../agent-ldap/doc/autodocs
+#
+
+htmldir = $(docdir)/autodocs
+
+html_DATA = index.html $(wildcard *.html)
+CLEANFILES = $(html_DATA)
+
+index.html: $(srcdir)/../../src/*.h
+	cd $(srcdir)/../../src && @ybindir@/ydoc agent-XX *.h
+	mv -f $(srcdir)/../../src/*.html .
