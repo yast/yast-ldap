@@ -931,7 +931,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	argmap = arg->asMap();
 	
     /**
-     * initialization: Execute(.ldap, $[ "host": <host>, "port": <port>] )
+     * initialization: Execute (.ldap,$[
+     * 	"host": <host>, "port": <port>, "use_tls": "no"|"yes"|"try" ] )
      */
     if (path->length() == 0) {
 
@@ -954,8 +955,32 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    ldap_error = "init";
 	    return YCPBoolean (false);
 	}
+
+	// start TLS if proper parameter is given
+	string tls	= getValue (argmap, "use_tls");
+	if (tls == "try" || tls == "yes") {
+	    int error = ldap->start_tls ();
+	    // check if starting TLS failed
+	    if (error != 0) {
+		// return an error
+		if (tls == "yes") {
+		    ldap_error_code	= error;
+		    ldap_error		= string (ldap_err2string (error));
+		    return YCPBoolean (false);
+		}
+		// "try" -> start again, but without tls
+		ldap = new LDAPConnection (hostname, port, cons);
+		if (!ldap || !cons)
+		{
+		    y2error ("Error while initializing connection object");
+		    ldap_error 		= "init";
+		    return YCPBoolean (false);
+		}
+	    }
+
+	}
 	ldap_initialized = true;
-	return YCPBoolean(true);
+	return YCPBoolean (true);
     }
     if (!ldap_initialized) {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");

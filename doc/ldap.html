@@ -63,7 +63,7 @@ and also for the list of possible future enhancements.
 	<td align="left">YCPMap</td>
 	<td align="left">YCPMap or YCPList</td>
 	<td>Generic search command. Return value is list of objects (as default)
-	    or map of type <tt>$[ dn: object ]</tt> when <tt>return_map</tt>
+	    or map of type <tt>$[ dn: object ]</tt> when <tt>map</tt>
 	    in argument map is <tt>true</tt>.<br>
 	    <b>Example of argument map</b>:<br>
 	    <tt>$[<br>
@@ -71,7 +71,7 @@ and also for the list of possible future enhancements.
 		"filter" : "(objectClass=posixGroup)",<br>
 		"scope"  : 0, //0:base, 1:one, 2:sub<br>
 		"attrsOnly": false,<br>
-		"return_map": true, // when true, return map not the list<br>
+		"map": true, // when true, return map instead of the list<br>
 		"single_values": false, // when true, one-item values are
 		    returned as string, not as list with one value<br>
 		"dn_only": false, // when true, only list of DN's will be
@@ -265,16 +265,24 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
 Return value is YCPBoolean (usually the success of the object method call).
 <p>
 <table border=3>
-    <tr><th width="20%" align="left">Path</th>
+    <tr><th width="15%" align="left">Path</th>
 	<th width="15%" align="left">Argument</th>
 	<th align="left">Result</th>
     </tr>
     <tr><td><tt>.ldap</td>
 	<td align="left">YCPMap</td>
 	<td>Initialization. Input map has to contain hostname and may contain
-	    port number.<br>
+	    port number and "use_tls" entry.<br>
+	    "use_tls" could have these values:<br>
+	    "no": Do not start TLS (same when "use_tls" is missing)<br>
+	    "try": Start TLS. If it was not successful, fall back to unencrypted LDAP<br>
+	    "yes": Start TLS. If it fails, return false (check its value with ldap.error read call).<br>
 	    <b>Example of SCR call:</b><br>
-	    <tt>Execute(.ldap, $[ "hostname": "localhost", "port": 389])</tt>
+	    <tt>Execute(.ldap, $[<br>
+		"hostname"	: "localhost",<br>
+		"port"		: 389,<br>
+		"use_tls"	: "try"<br>
+	    ])</tt>
 	    </td>
     </tr>
     <tr><td><tt>.ldap.bind</td>
@@ -329,7 +337,7 @@ Return value is YCPBoolean (usually the success of the object method call).
 
 <P>
 <ADDRESS>
-Jiri Suchomel &lt;jsuchome@suse.cz&gt;<BR>
+Jiří Suchomel &lt;jsuchome@suse.cz&gt;<BR>
 </ADDRESS>
 
 
