@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Wed Feb 11 16:28:11 CET 2004 - jsuchome@suse.cz
+
+- attributes "uid" (for users) and "cn" (for groups) allowed only
+with single value
+- change in the rename process: first rename, then change the attributes
+- 2.9.3
+
+-------------------------------------------------------------------
 Tue Feb 10 18:15:23 CET 2004 - jsuchome@suse.cz
 
 - check for integer values and convert then to string

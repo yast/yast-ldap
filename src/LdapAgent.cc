@@ -178,7 +178,7 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
 	else if (key == "userPassword") // ignore
 	    continue;
 
-	if (sl.size() > 1 || key == "uniqueMember")
+	if ((sl.size() > 1 || key == "uniqueMember") && key != "groupname")
 	{
 	    value = YCPList (list);
 	}
@@ -221,7 +221,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	else if (key == "userPassword") // ignore
 	    continue;
 
-	if (sl.size() > 1)
+	if (sl.size() > 1 && key != "username")
 	{
 	    value = YCPList (list);
 	}
@@ -739,6 +739,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	 * - If arg_map contains "rdn" key, object will be renamed using the
 	 * value of "rdn" as new Relative Distinguished Name. For moving, use
 	 * "newParentDN" value for new parent DN of object.
+	 * - "new_dn" new DN of renamed object
 	 * - If arg_map contains "check_attrs" key (with true value), there
 	 * will be done search for current object's attributes before modify.
 	 * When some attribute in modify_map has empty value it will be ignored,
@@ -764,16 +765,7 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    LDAPModList *modlist = new LDAPModList();
 	    generate_mod_list (modlist, argmap2, attrs);
 
-	    y2debug ("(modify call) dn:'%s'", dn.c_str());
-	    try {
-		ldap->modify (dn, modlist);
-	    }
-	    catch (LDAPException e) {
-		debug_exception (e, "modifying");
-		delete modlist;
-		return YCPBoolean (false);
-	    }
-	    // now check possible object renaming
+	    // check possible object renaming
 	    string rdn = getValue (argmap, "rdn");
 	    if (rdn != "") {
 		bool delOldRDN 		= getBoolValue (argmap, "delOldRDN");
@@ -785,6 +777,19 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		    debug_exception (e, "renaming");
 		    ret = YCPBoolean (false);
 		}
+	    }
+	    string new_dn = getValue (argmap, "new_dn");
+	    if (new_dn != "") {
+		dn = new_dn;
+	    }
+	    y2internal ("(modify call) dn:'%s'", dn.c_str());
+	    try {
+		ldap->modify (dn, modlist);
+	    }
+	    catch (LDAPException e) {
+		debug_exception (e, "modifying");
+		delete modlist;
+		return YCPBoolean (false);
 	    }
 	    delete modlist;
 	    return ret;
