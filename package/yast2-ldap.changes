@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Tue Feb  3 19:20:02 CET 2004 - jsuchome@suse.cz
+
+- updated for new Users module
+- change of some structures: use map instead of lists (better search)
+- 2.9.2
+
+-------------------------------------------------------------------
 Tue Nov 18 14:16:05 CET 2003 - jsuchome@suse.cz
 
 - 2.9.1 

@@ -50,16 +50,16 @@ private:
 
     YCPMap  users,
 	    users_by_name,
+	    usernames,
+	    userdns,
+	    uids,
+	    homes,
+	    user_items,
 	    groups,
-	    groups_by_name;
-    YCPList users_itemlist,
-	    uidlist,
-	    homelist,
-	    usernamelist,
-	    userdnlist,
-	    groups_itemlist,
-	    groupnamelist,
-	    gidlist;
+	    groups_by_name,
+	    groupnames,
+	    gids,
+	    group_items;
 
     string getValue ( const YCPMap map, const string key);
 
