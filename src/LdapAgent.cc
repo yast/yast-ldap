@@ -58,7 +58,8 @@ LdapAgent::~LdapAgent()
  */
 string LdapAgent::getValue (const YCPMap map, const string key)
 {
-    if (map->haskey(YCPString(key)) && map->value(YCPString(key))->isString())
+    if (!map->value(YCPString(key)).isNull()
+	&& map->value(YCPString(key))->isString())
 	return map->value(YCPString(key))->asString()->value();
     else
 	return "";
@@ -70,7 +71,7 @@ string LdapAgent::getValue (const YCPMap map, const string key)
  */
 int LdapAgent::getIntValue (const YCPMap map, const string key, int deflt)
 {
-    if (map->haskey(YCPString(key)) && map->value(YCPString(key))->isInteger())
+    if (!map->value(YCPString(key)).isNull() && map->value(YCPString(key))->isInteger())
 	return map->value(YCPString(key))->asInteger()->value(); 
     else
 	return deflt;
@@ -82,7 +83,7 @@ int LdapAgent::getIntValue (const YCPMap map, const string key, int deflt)
  */
 bool LdapAgent::getBoolValue (const YCPMap map, const string key)
 {
-    if (map->haskey(YCPString(key)) && map->value(YCPString(key))->isBoolean())
+    if (!map->value(YCPString(key)).isNull() && map->value(YCPString(key))->isBoolean())
 	return map->value(YCPString(key))->asBoolean()->value(); 
     else
 	return false;
@@ -94,7 +95,7 @@ bool LdapAgent::getBoolValue (const YCPMap map, const string key)
  */
 YCPList LdapAgent::getListValue (const YCPMap map, const string key)
 {
-    if (map->haskey(YCPString(key)) && map->value(YCPString(key))->isList())
+    if (!map->value(YCPString(key)).isNull() && map->value(YCPString(key))->isList())
 	return map->value(YCPString(key))->asList(); 
     else
 	return YCPList();
@@ -310,7 +311,7 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 	    bool present = true;
 	    if (attrs->isMap()) {
 		// check if attribute is present
-		present = attrs->asMap()->haskey(YCPString (key));
+		present = !attrs->asMap()->value(YCPString (key)).isNull();
 	    }
 	    if (i.value()->isString()) {
 		string val = i.value()->asString()->value();
@@ -363,8 +364,8 @@ YCPValue LdapAgent::Dir(const YCPPath& path)
 /**
  * Read
  */
-YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
-{
+YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValue& opt) {
+
     y2debug ("path in Read: '%s'.", path->toString().c_str());
     YCPValue ret = YCPVoid();
 	
@@ -520,6 +521,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 	    LDAPObjClass oc = schema->getObjectClassByName (name);
 	    if (oc.getName() != "")
 	    {
+		ret->add (YCPString ("kind"), YCPInteger (oc.getKind()));
 		ret->add (YCPString ("oid"), YCPString (oc.getOid()));
 		ret->add (YCPString ("desc"), YCPString (oc.getDesc()));
 		ret->add (YCPString ("must"), stringlist2ycplist(oc.getMust()));
@@ -1070,7 +1072,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    // get the name of default group
 		    int gid = getIntValue (user, "gid", -1);
 		    string groupname;
-		    if (groups->haskey(YCPInteger(gid)))
+		    if (!groups->value(YCPInteger(gid)).isNull())
 			groupname = getValue (
 			  groups->value (YCPInteger(gid))->asMap(),"groupname");
 		    if (groupname != "")
@@ -1092,7 +1094,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    more_usersmap [gid] += username;
 		    // generate itemlist
 		    if (itemlists) {
-			YCPTerm item ("item", true), id ("id", true);
+			YCPTerm item ("item"), id ("id");
 			id->add (YCPInteger (uid));
 			item->add (YCPTerm (id));
 			item->add (YCPString (username));
@@ -1147,7 +1149,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		}
 		// generate itemlist if wanted
 		if (itemlists) {
-		    YCPTerm item ("item", true), id ("id", true);
+		    YCPTerm item ("item"), id ("id");
 		    id->add (YCPInteger (gid));
 		    item->add (YCPTerm (id));
 		    item->add (YCPString (groupname));
@@ -1189,7 +1191,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
  */
 YCPValue LdapAgent::otherCommand(const YCPTerm& term)
 {
-    string sym = term->symbol()->symbol();
+    string sym = term->name();
 
     if (sym == "LdapAgent") {
         /* Your initialization */

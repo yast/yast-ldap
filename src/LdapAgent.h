@@ -12,7 +12,6 @@
 
 #include <Y2.h>
 #include <scr/SCRAgent.h>
-#include <scr/SCRInterpreter.h>
 
 #include <LDAPConnection.h>
 #include <LDAPException.h>
@@ -129,8 +128,9 @@ public:
      * @param path Path that should be read.
      * @param arg Additional parameter.
      */
-    virtual YCPValue Read(const YCPPath &path,
-			  const YCPValue& arg = YCPNull());
+    virtual YCPValue Read ( const YCPPath &path,
+			    const YCPValue& arg = YCPNull(),
+			    const YCPValue& opt = YCPNull());
 
     /**
      * Provides SCR Write ().
