@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Tue Nov 18 13:28:57 CET 2003 - jsuchome@suse.cz
+
+- migrated to doxygen
+
+-------------------------------------------------------------------
 Fri Oct  3 10:59:27 CEST 2003 - jsuchome@suse.cz
 
 - attribute 'cn' not returned as 'fullname' any more (but as 'cn')
