@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Mar 12 13:47:59 CET 2004 - jsuchome@suse.cz
+
+- do not ignore userPassword value
+
+-------------------------------------------------------------------
 Wed Mar  3 14:12:21 CET 2004 - jsuchome@suse.cz
 
 - configurable member attribute of LDAP groups

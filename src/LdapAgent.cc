@@ -180,8 +180,6 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 	// all other attributes have the same name as in LDAP schema
 	if (key == "cn")
 	    key = "groupname";
-	else if (key == "userPassword") // ignore
-	    continue;
 
 	if ((sl.size() > 1 || key == member_attribute) && key != "groupname")
 	{
@@ -223,8 +221,6 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	// all other attributes have the same name as in LDAP schema
 	if (key == "uid")
 	    key = "username";
-	else if (key == "userPassword") // ignore
-	    continue;
 
 	if (sl.size() > 1 && key != "username")
 	{
@@ -243,7 +239,9 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     
     // for the need of yast2-users
     ret->add (YCPString ("type"), YCPString ("ldap"));
-    ret->add (YCPString ("userPassword"), YCPString ("x"));
+    if (ret->value (YCPString("userPassword")).isNull()) {
+	ret->add (YCPString ("userPassword"), YCPString ("x"));
+    }
     return ret;
 }
 
