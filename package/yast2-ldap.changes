@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Mar 15 10:15:21 CET 2005 - jsuchome@suse.cz
+
+- do not call methods from deleted object (#72190)
+- 2.11.0
+
+-------------------------------------------------------------------
 Mon Aug  9 15:42:01 CEST 2004 - jsuchome@suse.cz
 
 - LdapServerAccess.pm: function for adding indices and Samba ACL hack
