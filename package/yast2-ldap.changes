@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Oct  3 10:59:27 CEST 2003 - jsuchome@suse.cz
+
+- attribute 'cn' not returned as 'fullname' any more (but as 'cn')
+- 2.9.0
+
+-------------------------------------------------------------------
 Tue Sep  2 15:05:56 CEST 2003 - jsuchome@suse.cz
 
 - do not read value of userPassword attribute (for yast2-users module)

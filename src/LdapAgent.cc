@@ -220,8 +220,6 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	    key = "uid";
 	else if (key == "gidNumber")
 	    key = "gid";
-	else if (key == "cn")
-	    key = "fullname";
 	else if (key == "uid")
 	    key = "username";
 	else if (key == "homeDirectory")
@@ -1098,7 +1096,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			id->add (YCPInteger (uid));
 			item->add (YCPTerm (id));
 			item->add (YCPString (username));
-			item->add (YCPString (getValue (user, "fullname")));
+			item->add (YCPString (getValue (user, "cn")));
 			item->add (addBlanks (uid));
 			string all_groups = groupname;
 			if (grouplist != "") {
