@@ -80,6 +80,7 @@ private:
      * converts StringList object to YCPList value
      */
     YCPList stringlist2ycplist (StringList sl);
+    YCPList LdapAgent::stringlist2ycplist_low (StringList sl);
 
     YCPMap getGroupEntry (LDAPEntry *entry, string member_attribute);
     YCPMap getUserEntry (LDAPEntry *entry);

@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Mon Mar 22 13:18:18 CET 2004 - jsuchome@suse.cz
+
+- return lowercase attribute names
+- inital support for binary values
+- 2.9.6
+
+-------------------------------------------------------------------
 Fri Mar 19 14:57:21 CET 2004 - mvidner@suse.cz
 
 - added AGENT_LIBADD so that agents work from standalone Perl

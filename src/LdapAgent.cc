@@ -11,6 +11,17 @@
 
 #define PC(n)       (path->component_str(n))
 
+// convert string to lowercase
+string tolower (string in)
+{
+
+    string out;
+    for (int i= 0; in[i] != 0; i ++) {
+	out += tolower (in[i]);
+    }
+    return out;
+}
+
 /**
  * add blanks to uid/gid entry in table 
  * (for the use of users module)
@@ -122,13 +133,25 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 
-	if (single_values && sl.size() == 1)
+	string key = i->getName();
+	// ------------ FIXME: properly check if value is binary ------------
+	if (key.find (";binary") != -1) {
+	    y2warning ("binary value!");
+	    BerValue **val = i->getBerValues();
+	    // FIXME I take only first value now...
+	    BerValue *one_val = val[0];
+	    value = YCPByteblock ((const unsigned char*) one_val->bv_val, one_val->bv_len);
+	    ber_bvecfree(val);
+	}
+	// -------------------------------------------------------------------
+	// FIXME only string or list of strings is assumed later...
+	else if (single_values && sl.size() == 1)
 	    value = YCPString (*(sl.begin()));
 	else
 	    value = YCPList (list);
 
 //y2internal ("key: %s, value: %s", i->getName().c_str(), (*(sl.begin())).c_str()); 
-	ret->add(YCPString(i->getName()), YCPValue(value));
+	ret->add (YCPString (tolower (key)), YCPValue(value));
     }
     return ret;
 }
@@ -143,7 +166,7 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
     YCPMap ret;
     LDAPSearchResults* entries = NULL;
     try {
-	entries = ldap->search (dn, 0, "objectClass=*", StringList(), true);
+	entries = ldap->search (dn, 0, "objectclass=*", StringList(), true);
     }
     catch  (LDAPException e) {
         debug_exception (e, "searching for attributes");
@@ -169,7 +192,7 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	string key = i->getName();
+	string key = tolower (i->getName());
 	string userlist;
 	
 	// get the values of current attribute:
@@ -183,7 +206,7 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 	else
 	{
 	    string val = *(sl.begin());
-	    if ( key == "gidNumber" )
+	    if ( key == "gidnumber" )
 		value = YCPInteger (atoi (val.c_str()));
 	    else
 		value = YCPString (val);
@@ -205,7 +228,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	string key = i->getName();
+	string key = tolower (i->getName());
 	string userlist;
 	
 	// get the values of current attribute:
@@ -219,7 +242,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	else
 	{
 	    string val = *(sl.begin());
-	    if ( key == "gidNumber" || key == "uidNumber")
+	    if ( key == "gidnumber" || key == "uidnumber")
 		value = YCPInteger (atoi (val.c_str()));
 	    else
 		value = YCPString (val);
@@ -229,8 +252,8 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     
     // for the need of yast2-users
     ret->add (YCPString ("type"), YCPString ("ldap"));
-    if (ret->value (YCPString("userPassword")).isNull()) {
-	ret->add (YCPString ("userPassword"), YCPString ("x"));
+    if (ret->value (YCPString("userpassword")).isNull()) {
+	ret->add (YCPString ("userpassword"), YCPString ("x"));
     }
     return ret;
 }
@@ -258,6 +281,14 @@ YCPList LdapAgent::stringlist2ycplist (StringList sl)
     return l;
 }
 
+YCPList LdapAgent::stringlist2ycplist_low (StringList sl)
+{
+    YCPList l;
+    for (StringList::const_iterator n = sl.begin(); n != sl.end();n++){
+	l->add (YCPString (tolower (*n)));
+    }
+    return l;
+}
 
 /**
  * creates attributes for new LDAP object and fills their values 
@@ -281,6 +312,23 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 		if (i.value()->asList()->isEmpty())
 		    continue;
 		new_attr.setValues (ycplist2stringlist (i.value()->asList()));
+	    }
+	    else if (i.value()->isByteblock ()) {
+		// ------------------------- FIXME -------------------------
+		y2warning ("byteblock to save: %s",
+		       i.value()->asByteblock()->toString().c_str());
+		YCPByteblock data = i.value()->asByteblock();
+
+		BerValue *val = (BerValue*) malloc(sizeof(BerValue));
+
+		val->bv_len = data->size();
+		val->bv_val = (char*) malloc (sizeof(char)*(data->size()+1));
+    
+		memcpy (val->bv_val, data->value(), data->size());
+
+		y2internal ("succsfully added: %i", new_attr.addValue (val));
+		ber_bvfree (val);
+		// ------------------------- FIXME -------------------------
 	    }
 	    else continue;
 	    attrs->addAttribute (new_attr);
@@ -332,7 +380,27 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 		    op = LDAPModification::OP_DELETE;
 		}
 		else
+		{
 		    attr.setValues (ycplist2stringlist (i.value()->asList()));
+		    // FIXME list of strings is assumed!!!
+		}
+	    }
+	    else if (i.value()->isByteblock ()) {
+		// ------------------------- FIXME -------------------------
+		y2warning ("byteblock to save: %s",
+		       i.value()->asByteblock()->toString().c_str());
+		YCPByteblock data = i.value()->asByteblock();
+
+		BerValue *val = (BerValue*) malloc(sizeof(BerValue));
+
+		val->bv_len = data->size();
+		val->bv_val = (char*) malloc (sizeof(char)*(data->size()+1));
+    
+		memcpy (val->bv_val, data->value(), data->size());
+
+		y2internal ("succsfully added: %i", attr.addValue (val));
+		ber_bvfree (val);
+		// ------------------------- FIXME -------------------------
 	    }
 	    else continue;
 	    modlist->addModification (LDAPModification (attr, op));
@@ -400,7 +468,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	    string base_dn	= getValue (argmap, "base_dn");
 	    string filter	= getValue (argmap, "filter");
 	    if (filter == "") {
-		filter = "objectClass=*";
+		filter = "objectclass=*";
 	    }
 	    int scope		= getIntValue (argmap, "scope", 0);
 	    bool attrsOnly	= getBoolValue (argmap, "attrsOnly");
@@ -522,12 +590,12 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 		ret->add (YCPString ("kind"), YCPInteger (oc.getKind()));
 		ret->add (YCPString ("oid"), YCPString (oc.getOid()));
 		ret->add (YCPString ("desc"), YCPString (oc.getDesc()));
-		ret->add (YCPString ("must"), stringlist2ycplist(oc.getMust()));
-		ret->add (YCPString ("may"), stringlist2ycplist (oc.getMay()));
-		ret->add (YCPString ("sup"), stringlist2ycplist (oc.getSup()));
+		ret->add (YCPString ("must"), stringlist2ycplist_low (oc.getMust()));
+		ret->add (YCPString ("may"), stringlist2ycplist_low (oc.getMay()));
+		ret->add (YCPString ("sup"), stringlist2ycplist_low (oc.getSup()));
 	    }
 	    else {
-		y2error ("No such objectClass: '%s'", name.c_str());
+		y2error ("No such objectclass: '%s'", name.c_str());
 		ldap_error = "oc_not_found";
 	    }
 
@@ -896,11 +964,11 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    schema = new LDAPSchema ();
 
 	    StringList sl;
-	    sl.add ("objectClasses");
-	    sl.add ("attributeTypes");
+	    sl.add ("objectclasses");
+	    sl.add ("attributetypes");
 	    LDAPSearchResults* entries = NULL;
 	    try {
-		entries = ldap->search (schema_dn, 0, "objectClass=*", sl);
+		entries = ldap->search (schema_dn, 0, "objectclass=*", sl);
 	    }
 	    catch  (LDAPException e) {
 		debug_exception (e, "searching");
@@ -912,9 +980,9 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		if (entry != 0) {
 		    const LDAPAttributeList *al= entry->getAttributes();
 		    schema->setObjectClasses (al->getAttributeByName
-			   ("objectClasses")->getValues());
+			   ("objectclasses")->getValues());
 		    schema->setAttributeTypes (al->getAttributeByName
-			   ("attributeTypes")->getValues());
+			   ("attributetypes")->getValues());
 		}
 		delete entry;
 	    }
@@ -940,7 +1008,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    string member_attribute	=
 		getValue (argmap, "member_attribute");
 	    if (member_attribute == "")
-		member_attribute	= "uniqueMember";
+		member_attribute	= "uniquemember";
 
 	    int user_scope	= getIntValue (argmap, "user_scope", 2);
 	    int group_scope	= getIntValue (argmap, "group_scope", 2);
@@ -1003,9 +1071,9 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		if (entry != 0) {
 		    YCPMap group = getGroupEntry (entry, member_attribute);
 		    group->add (YCPString("dn"), YCPString(entry->getDN()));
-		    int gid = getIntValue (group, "gidNumber", -1);
+		    int gid = getIntValue (group, "gidnumber", -1);
 		    if (gid == -1) {
-			y2warning("Group '%s' has no gidNumber?",
+			y2warning("Group '%s' has no gidnumber?",
 			    entry->getDN().c_str());
 			continue;
 		    }
@@ -1032,7 +1100,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			}
 			usermap->add (YCPString (udn), YCPInteger (1));
 		    }
-		    // FIXME: should "uniqueMember" be replaced with a map,
+		    // FIXME: should "uniquemember" be replaced with a map,
 		    // or it is better to use some generic name ('userlist')?
 		    group->add (YCPString (member_attribute), usermap);
 //		    group->add (YCPString ("userlist"), usermap);
@@ -1084,14 +1152,14 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    string dn = entry->getDN();
 		    user->add (YCPString("dn"), YCPString(dn));
 		    // check it
-		    int uid = getIntValue (user, "uidNumber", -1);
+		    int uid = getIntValue (user, "uidnumber", -1);
 		    if (uid == -1) {
-			y2warning("User with dn '%s' has no uidNumber?",
+			y2warning("User with dn '%s' has no uidnumber?",
 			    dn.c_str());
 			continue;
 		    }
 		    // get the name of default group
-		    int gid = getIntValue (user, "gidNumber", -1);
+		    int gid = getIntValue (user, "gidnumber", -1);
 		    string groupname;
 		    if (!groups->value(YCPInteger(gid)).isNull())
 			groupname = getValue (
@@ -1148,7 +1216,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    uids->add (YCPInteger (uid), YCPInteger(1));
 		    usernames->add (YCPString (username), YCPInteger(1));
 		    userdns->add (YCPString (dn), YCPInteger(1));
-		    homes->add (YCPString (getValue (user,"homeDirectory")),
+		    homes->add (YCPString (getValue (user,"homedirectory")),
 			YCPInteger(1));
 		}
 		else ok = false;
