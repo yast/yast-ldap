@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Jul 29 11:01:45 CEST 2004 - jsuchome@suse.cz
+
+- added LdapServerAccess.pm to provide access to LDAP server module
+- yast2 is required
+
+-------------------------------------------------------------------
 Wed Jul 14 15:00:49 CEST 2004 - jsuchome@suse.cz
 
 - correctly initialize global values in constructor

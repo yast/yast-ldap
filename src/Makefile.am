@@ -20,3 +20,14 @@ libpy2ag_ldap_la_LDFLAGS = -version-info 2:0
 libpy2ag_ldap_la_LIBADD = @AGENT_LIBADD@ -lldapcpp -L$(libdir) 
 
 INCLUDES = -I$(includedir)
+
+
+# ----------- temporary handle also perl/ycp files:
+
+module_DATA =		\
+    LdapServerAccess.pm
+
+EXTRA_DIST = $(module_DATA)
+
+include $(top_srcdir)/Makefile.am.common
+
