@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Tue Sep  2 15:05:56 CEST 2003 - jsuchome@suse.cz
+
+- do not read value of userPassword attribute (for yast2-users module)
+
+-------------------------------------------------------------------
 Mon Sep  1 16:58:14 CEST 2003 - jsuchome@suse.cz
 
 - added test for object class existence

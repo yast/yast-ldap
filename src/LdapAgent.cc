@@ -175,6 +175,9 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
 	    key = "gid";
 	else if (key == "cn")
 	    key = "groupname";
+	else if (key == "userPassword") // ignore
+	    continue;
+
 	if (sl.size() > 1 || key == "uniqueMember")
 	{
 	    value = YCPList (list);
@@ -225,6 +228,8 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	    key = "home";
 	else if (key == "loginShell")
 	    key = "shell";
+	else if (key == "userPassword") // ignore
+	    continue;
 
 	if (sl.size() > 1)
 	{
