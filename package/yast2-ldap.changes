@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Mar  3 14:12:21 CET 2004 - jsuchome@suse.cz
+
+- configurable member attribute of LDAP groups
+- 2.9.4
+
+-------------------------------------------------------------------
 Wed Feb 25 09:52:55 CET 2004 - jsuchome@suse.cz
 
 - convert string-type values to integers if possible

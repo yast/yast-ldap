@@ -81,7 +81,7 @@ private:
      */
     YCPList stringlist2ycplist (StringList sl);
 
-    YCPMap getGroupEntry (LDAPEntry *entry);
+    YCPMap getGroupEntry (LDAPEntry *entry, string member_attribute);
     YCPMap getUserEntry (LDAPEntry *entry);
 
     /**

@@ -162,7 +162,7 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 }
 
 
-YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
+YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 {
     YCPMap ret;	
     const LDAPAttributeList *al= entry->getAttributes();
@@ -183,7 +183,7 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
 	else if (key == "userPassword") // ignore
 	    continue;
 
-	if ((sl.size() > 1 || key == "uniqueMember") && key != "groupname")
+	if ((sl.size() > 1 || key == member_attribute) && key != "groupname")
 	{
 	    value = YCPList (list);
 	}
@@ -948,6 +948,12 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    string group_base	= getValue (argmap, "group_base");
 	    string user_filter	= getValue (argmap, "user_filter");
 	    string group_filter	= getValue (argmap, "group_filter");
+	    // which attribute have groups for list of members
+	    string member_attribute	=
+		getValue (argmap, "member_attribute");
+	    if (member_attribute == "")
+		member_attribute	= "uniqueMember";
+
 	    int user_scope	= getIntValue (argmap, "user_scope", 2);
 	    int group_scope	= getIntValue (argmap, "group_scope", 2);
 	    bool itemlists	= getBoolValue (argmap, "itemlists");
@@ -1007,7 +1013,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	      try {
 		entry = entries->getNext();
 		if (entry != 0) {
-		    YCPMap group = getGroupEntry (entry);
+		    YCPMap group = getGroupEntry (entry, member_attribute);
 		    group->add (YCPString("dn"), YCPString(entry->getDN()));
 		    int gid = getIntValue (group, "gidNumber", -1);
 		    if (gid == -1) {
@@ -1018,7 +1024,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    string groupname = getValue (group, "groupname");
 		    
 		    // go through userlist of this group
-		    YCPList ul = getListValue (group, "uniqueMember");
+		    YCPList ul = getListValue (group, member_attribute);
 		    string s_ul;
 		    YCPMap usermap;
 		    for (int i=0; i < ul->size(); i++) {
@@ -1040,7 +1046,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    }
 		    // FIXME: should "uniqueMember" be replaced with a map,
 		    // or it is better to use some generic name ('userlist')?
-		    group->add (YCPString ("uniqueMember"), usermap);
+		    group->add (YCPString (member_attribute), usermap);
 //		    group->add (YCPString ("userlist"), usermap);
 		    // change list of users to string (need only for itemlist)
 		    if (itemlists) {
