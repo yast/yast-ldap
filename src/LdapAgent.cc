@@ -514,6 +514,8 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	    // when true, no error message is written when object was not found
 	    // (empty list/map is returned)
 	    bool not_found_ok	= getBoolValue (argmap, "not_found_ok");
+	    // when true, "dn" key is included in result map of each object
+	    bool include_dn	=  getBoolValue (argmap, "include_dn");
  
 	    StringList attrs = ycplist2stringlist(getListValue(argmap,"attrs"));
 			
@@ -551,16 +553,22 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 		    try {
 			entry = entries->getNext();
 			if (entry != 0) {
+			    string dn	= entry->getDN();
 			    y2debug ("dn: %s", entry->getDN().c_str());
-			    if (dn_only)
+			    if (dn_only) {
 				retlist->add (YCPString (entry->getDN()));
-			    else if (return_map) {
-				retmap->add (YCPString (entry->getDN()),
-				    getSearchedEntry (entry, single_values));
 			    }
-			    else
-				retlist->add (
-				    getSearchedEntry (entry, single_values));
+			    else {
+				YCPMap e =getSearchedEntry(entry,single_values);
+				if (include_dn) {
+				    e->add (YCPString ("dn"), YCPString (dn));
+				}
+				if (return_map) {
+				    retmap->add (YCPString (entry->getDN()), e);
+				}
+				else
+				    retlist->add (e);
+			    }
 			}
 			else ok = false;
 			delete entry;
@@ -867,7 +875,8 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		}
 		catch (LDAPException e) {
 		    debug_exception (e, "renaming");
-		    ret = YCPBoolean (false);
+		    delete modlist;
+		    return YCPBoolean (false);
 		}
 	    }
 	    string new_dn = getValue (argmap, "new_dn");
