@@ -355,10 +355,10 @@ void LdapAgent::debug_exception (LDAPException e, char* action)
 /**
  * Dir
  */
-YCPValue LdapAgent::Dir(const YCPPath& path)
+YCPList LdapAgent::Dir(const YCPPath& path)
 {
     y2error("Wrong path '%s' in Read().", path->toString().c_str());
-    return YCPVoid();
+    return YCPNull();
 }
 
 /**
@@ -677,12 +677,12 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 /**
  * Write
  */
-YCPValue LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
+YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
        const YCPValue& arg2)
 {
     y2debug ("path in Write: '%s'.", path->toString().c_str());
 
-    YCPValue ret = YCPBoolean(true);
+    YCPBoolean ret = YCPBoolean(true);
     
     YCPMap argmap, argmap2;
     if (!arg.isNull() && arg->isMap())
