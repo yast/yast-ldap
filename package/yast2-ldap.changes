@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Mon Mar 15 11:24:21 CET 2004 - jsuchome@suse.cz
+
+- do not change LDAP keys for yast2-users usage 
+  ("uid" for users and "cn" for groups)
+- 2.9.5
+
+-------------------------------------------------------------------
 Fri Mar 12 13:47:59 CET 2004 - jsuchome@suse.cz
 
 - do not ignore userPassword value

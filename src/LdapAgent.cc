@@ -176,12 +176,7 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 	
-	// translate some keys for users-module usability
-	// all other attributes have the same name as in LDAP schema
-	if (key == "cn")
-	    key = "groupname";
-
-	if ((sl.size() > 1 || key == member_attribute) && key != "groupname")
+	if ((sl.size() > 1 || key == member_attribute) && key != "cn")
 	{
 	    value = YCPList (list);
 	}
@@ -217,12 +212,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 	
-	// translate some keys for users-module usability
-	// all other attributes have the same name as in LDAP schema
-	if (key == "uid")
-	    key = "username";
-
-	if (sl.size() > 1 && key != "username")
+	if (sl.size() > 1 && key != "uid")
 	{
 	    value = YCPList (list);
 	}
@@ -1019,7 +1009,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			    entry->getDN().c_str());
 			continue;
 		    }
-		    string groupname = getValue (group, "groupname");
+		    string groupname = getValue (group, "cn");
 		    
 		    // go through userlist of this group
 		    YCPList ul = getListValue (group, member_attribute);
@@ -1105,12 +1095,12 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    string groupname;
 		    if (!groups->value(YCPInteger(gid)).isNull())
 			groupname = getValue (
-			  groups->value (YCPInteger(gid))->asMap(),"groupname");
+			  groups->value (YCPInteger(gid))->asMap(),"cn");
 		    if (groupname != "")
 			user->add (YCPString("groupname"),YCPString(groupname));
 
 		    // get the list of groups user belongs to
-		    string username = getValue (user, "username");
+		    string username = getValue (user, "uid");
 		    // 'grouplist' as string is used to generate table item
 		    string grouplist; 
 		    if (s_grouplists.find (dn) != s_grouplists.end())
@@ -1179,7 +1169,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 
 		YCPMap group = i.value()->asMap();
 		int gid = i.key()->asInteger()->value();
-		string groupname = getValue (group, "groupname");
+		string groupname = getValue (group, "cn");
 		string more_users; // TODO for itemlist!
 		if (more_usersmap.find (gid) != more_usersmap.end()) {
 		    group->add (YCPString ("more_users"), more_usersmap[gid]);
