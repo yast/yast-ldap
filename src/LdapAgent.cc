@@ -1036,6 +1036,11 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap_error = "missing_dn";
 		return YCPBoolean (false);
 	    }
+	    YCPValue attrs = YCPVoid();
+	    if (check_attrs) {
+		// we must call this before renaming
+		attrs = getObjectAttributes (dn);
+	    }
 	    string new_dn 	= getValue (argmap, "new_dn");
 	    string newParentDN	= getValue (argmap, "newParentDN");
 
@@ -1065,10 +1070,6 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 	    }
 
 	    // now edit changed attributes of the entry
-	    YCPValue attrs = YCPVoid();
-	    if (check_attrs) {
-		attrs = getObjectAttributes (dn);
-	    }
 	    // generate the list of modifications from parameters:
 	    LDAPModList *modlist = new LDAPModList();
 	    generate_mod_list (modlist, argmap2, attrs);
