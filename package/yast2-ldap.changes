@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Mar 25 18:11:54 CET 2004 - jsuchome@suse.cz
+
+- fixed adding new entry containing attribute with binary value
+- 2.9.7
+
+-------------------------------------------------------------------
 Mon Mar 22 13:18:18 CET 2004 - jsuchome@suse.cz
 
 - return lowercase attribute names

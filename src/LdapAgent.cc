@@ -8,18 +8,18 @@
  */
 
 #include "LdapAgent.h"
+#include <ctype.h>
 
 #define PC(n)       (path->component_str(n))
 
 // convert string to lowercase
 string tolower (string in)
 {
-
-    string out;
-    for (int i= 0; in[i] != 0; i ++) {
-	out += tolower (in[i]);
+    string::iterator i;
+    for (i = in.begin(); i != in.end(); i++ ) {
+	(*i) = tolower (*i);
     }
-    return out;
+    return in;
 }
 
 /**
@@ -135,7 +135,7 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 
 	string key = i->getName();
 	// ------------ FIXME: properly check if value is binary ------------
-	if (key.find (";binary") != -1) {
+	if (key.find (";binary") != string::npos) {
 	    y2warning ("binary value!");
 	    BerValue **val = i->getBerValues();
 	    // FIXME I take only first value now...
@@ -144,13 +144,11 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 	    ber_bvecfree(val);
 	}
 	// -------------------------------------------------------------------
-	// FIXME only string or list of strings is assumed later...
 	else if (single_values && sl.size() == 1)
 	    value = YCPString (*(sl.begin()));
 	else
 	    value = YCPList (list);
 
-//y2internal ("key: %s, value: %s", i->getName().c_str(), (*(sl.begin())).c_str()); 
 	ret->add (YCPString (tolower (key)), YCPValue(value));
     }
     return ret;
@@ -265,7 +263,7 @@ StringList LdapAgent::ycplist2stringlist (YCPList l)
 	if (l.value(i)->isInteger()) {
 	    sl.add (l->value(i)->toString());
 	}
-	else {
+	else if (l.value(i)->isString()) {
 	    sl.add (l->value(i)->asString()->value());
 	}
     }
@@ -308,15 +306,7 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
 	    else if (i.value()->isInteger()) {
 		new_attr.addValue (i.value()->toString());
 	    }
-	    else if (i.value()->isList()) {
-		if (i.value()->asList()->isEmpty())
-		    continue;
-		new_attr.setValues (ycplist2stringlist (i.value()->asList()));
-	    }
 	    else if (i.value()->isByteblock ()) {
-		// ------------------------- FIXME -------------------------
-		y2warning ("byteblock to save: %s",
-		       i.value()->asByteblock()->toString().c_str());
 		YCPByteblock data = i.value()->asByteblock();
 
 		BerValue *val = (BerValue*) malloc(sizeof(BerValue));
@@ -326,9 +316,14 @@ void LdapAgent::generate_attr_list (LDAPAttributeList* attrs, YCPMap map)
     
 		memcpy (val->bv_val, data->value(), data->size());
 
-		y2internal ("succsfully added: %i", new_attr.addValue (val));
+		new_attr.addValue (val);
 		ber_bvfree (val);
-		// ------------------------- FIXME -------------------------
+	    }
+	    else if (i.value()->isList()) {
+		if (i.value()->asList()->isEmpty())
+		    continue;
+		// list of strings/integers
+		new_attr.setValues (ycplist2stringlist (i.value()->asList()));
 	    }
 	    else continue;
 	    attrs->addAttribute (new_attr);
@@ -382,13 +377,10 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
 		else
 		{
 		    attr.setValues (ycplist2stringlist (i.value()->asList()));
-		    // FIXME list of strings is assumed!!!
 		}
 	    }
 	    else if (i.value()->isByteblock ()) {
 		// ------------------------- FIXME -------------------------
-		y2warning ("byteblock to save: %s",
-		       i.value()->asByteblock()->toString().c_str());
 		YCPByteblock data = i.value()->asByteblock();
 
 		BerValue *val = (BerValue*) malloc(sizeof(BerValue));
@@ -398,7 +390,7 @@ void LdapAgent::generate_mod_list (LDAPModList* modlist, YCPMap map, YCPValue at
     
 		memcpy (val->bv_val, data->value(), data->size());
 
-		y2internal ("succsfully added: %i", attr.addValue (val));
+		attr.addValue (val);
 		ber_bvfree (val);
 		// ------------------------- FIXME -------------------------
 	    }
@@ -1216,8 +1208,10 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    uids->add (YCPInteger (uid), YCPInteger(1));
 		    usernames->add (YCPString (username), YCPInteger(1));
 		    userdns->add (YCPString (dn), YCPInteger(1));
-		    homes->add (YCPString (getValue (user,"homedirectory")),
-			YCPInteger(1));
+		    string home = getValue (user,"homedirectory");
+		    if (home != "") {
+			homes->add (YCPString (home), YCPInteger(1));
+		    }
 		}
 		else ok = false;
 		delete entry;
