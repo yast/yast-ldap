@@ -234,6 +234,8 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
 	    If 1st argument map contains <tt>"rdn"</tt> key, object will be
 	    renamed using the value of <tt>"rdn"</tt> as a new Relative
 	    Distinguished Name.<br>
+	    Parameter <tt>"new_dn"</tt> (DN of new object) is also necessary for
+	    renaming.
 	    For moving the object, use additionaly <tt>"newParentDN"</tt> value
 	    for new parent DN of object.<br>
 	    If argument map contains <tt>"check_attrs"</tt> key with <tt>true
@@ -247,7 +249,8 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
 	    <tt>$[<br>
 		"dn":               "ou=people,dc=suse,dc=cz",<br>
 	        "rdn":              "ou=lide",<br>
-		"delOldRDN":	    true<br>
+		"new_dn":	    "ou=lide,dc=suse,dc=cz"<br>
+		"deleteOldRDN":	    true<br>
 	    ]<br></tt>
 	    <b>Example of attributes map:</b><br>
 	    <tt>$[<br>
