@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Aug  5 17:48:15 CEST 2004 - jsuchome@suse.cz
+
+- updated to handle the split of ldapcpplib library
+- 2.10.3
+
+-------------------------------------------------------------------
 Thu Jul 29 11:01:45 CEST 2004 - jsuchome@suse.cz
 
 - added LdapServerAccess.pm to provide access to LDAP server module
