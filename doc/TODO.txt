@@ -5,5 +5,5 @@ $Id$
 TODO:
 -----
 
-- schema handling
+- advanced schema handling
 - document API

@@ -8,31 +8,37 @@
 <HR>
 
 <H2>Purpose</H2> 
-The Ldap agent (<TT>ag_ldap</TT>) is used to access <TT>...</TT>.
+The Ldap agent (<TT>ag_ldap</TT>) is used to access LDAP directory.
 It is part of YaST2 SCR, the system configuration repository,
 used to access configuration data on the target system. The general
-SCR API allows <TT>Read()</TT> and <TT>Write()</TT> access to get and
-change data.
+SCR API allows <TT>Read()</TT>, <TT>Write()</TT> and <TT>Execute()</TT>
+access to get and change data.
 
 <P>
 <H2>Implementation</H2>
-<TT>...</TT>
-
+Agent uses c++ library (<tt>ldapcpplib</tt>) for all LDAP operations.<br>
+During initialization (<tt>Execute (.ldap)</tt> call), new object of type
+<tt>LDAPConnection</tt> is created and all further actions with LDAP contens
+are called as the methods of this object.
 <P>
-<I><B>Note:</B> The complete development documentation is available in the
+The methods of ldapcpp library are described in
+<a href="/usr/share/doc/packages/ldapcpplib/srcdoc/html/hierarchy.html">
+ldapcpplib package documentation</a>.
+<p>
+<I>The complete development documentation is available in the
 <A HREF="autodocs/index.html"><TT>autodocs/</TT></A> directory.</I>
 
 <P>
 <H2>Interface for ldap-agent</H2>
 The interface is implemented as a SCR agent with the usual <TT>Read()</TT>,
-<TT>Write()</TT> and <TT>Dir()</TT> interface. The path prefix used is
-
-<UL><TT>.ldap</TT></UL>
-<TT>...</TT>
+<TT>Write()</TT> and <TT>Execute()</TT> interface. The path prefix used is
+<TT>.ldap</TT>. For more see the paths tables.
 
 <P>
 <H2>Restrictions, limits and future enhancements</H2>
-<TT>...</TT>
+
+If you want to use agent, don't forget to call <tt>Execute(.ldap)</tt> at first
+to initialize it.
 
 <P>
 See the <A HREF="TODO.txt">TODO.txt</A> file for the current status of support
@@ -40,26 +46,277 @@ and also for the list of possible future enhancements.
 
 <P>
 <H2>Complete Read paths table</H2>
-The complete <TT>Write()</TT> paths table is similar to this except for
-the paths to which YCPList is returned.
 
-<TABLE>
-	<TR><TH WIDTH="30%" ALIGN="left">Path</TH><TH WIDTH="20%" ALIGN="left">Type</TH><TH ALIGN="left">Result</TH></TR>
-	<TR><TD><TT>.ldap</TD><TD ALIGN="left">YCPList</TD>
-	<TD>list with all available directives (currently sublist of ["alias", "pre-install", "post-install", "options"]</TD></TR>
-	<TR>...</TR>
+<TABLE border=3>
+    <TR><TH WIDTH="20%" ALIGN="left">Path</TH>
+	<th width="10%" align="left">Argument</th>
+	<TH WIDTH="10%" ALIGN="left">Type of Result</TH>
+	<TH ALIGN="left">Result</TH>
+    </TR>
+    <TR><TD><TT>.ldap.error</TD>
+  	<td></td>
+  	<td align="left">YCPMap</td>
+	<TD>Map with last error message and code number.<br>Example of result:
+	    <tt>$[ "msg": "Can't contact LDAP server", "code": 81 ]</tt>
+	</TD></TR>
+    <tr><td><tt>.ldap.search</td>
+	<td align="left">YCPMap</td>
+	<td align="left">YCPMap or YCPList</td>
+	<td>Generic search command. Return value is list of objects (as default)
+	    or map of type <tt>$[ dn: object ]</tt> when <tt>return_map</tt>
+	    in argument map is <tt>true</tt>.<br>
+	    <b>Example of argument map</b>:<br>
+	    <tt>$[<br>
+		"base_dn": "dc=suse,dc=cz",<br>
+		"filter" : "(objectClass=posixGroup)",<br>
+		"scope"  : 0, //0:base, 1:one, 2:sub<br>
+		"attrsOnly": false,<br>
+		"return_map": true, // when true, return map not the list<br>
+		"single_values": false, // when true, one-item values are
+		    returned as string, not as list with one value<br>
+		"dn_only": false, // when true, only list of DN's will be
+		    returned<br>
+		"not_found_ok": true, // when true, no error message is written
+		    when object was not found (empty list/map is returned)<br>
+		"attrs":    [ "objectClass", "cn", "gidNumber" ] // which
+		    attrinbutes do we search for<br>
+	    ]</tt>
+	    <b>Example of result map</b>:<br>
+	    <tt>$[<br>
+		"cn=users,dc=suse,dc=cz" : $[<br>
+		    "objectClass": [ "posixGroup"], "cn": "users",
+		       "gidNumber" : 500 ],<br>
+		"cn=group,dc=suse,dc=cz" : $[<br>
+		    "objectClass": [ "posixGroup"], "cn": "group",
+		       "gidNumber" : 501 ]<br>
+	    ]</tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.schema.object_class</td>
+	<td>YCPMap</td>
+	<td>YCPMap</td>
+	<td>Get the map of object class with given name. Argument map
+	    has to contain <tt>name</tt> entry.<br>
+	    <b>Example of argument map</b>:
+	    <tt>$[ "name": "userTemplate"]</tt><br>
+	    <b>Result map</b> contains entries <tt>oid, desc, must, may, sup</tt>.
+	    <tt>"sup"</tt> is name of superior class.</td>
+    </tr>
+    <tr><td><tt>.ldap.schema.attr_types</td>
+	<td>YCPMap</td>
+	<td>YCPMap</td>
+	<td>Get the map of attribute type with given name. Argument map
+	    has to contain <tt>name</tt> entry.<br>
+	    <b>Example of argument map</b>:
+	    <tt>$[ "name": "uidNumber"]</tt><br>
+	    <b>Result map</b> contains entries <tt>oid, desc, single</tt>.
+	    When <tt>"single"</tt> is true, only single value is allowed for
+	    this attribute type.</td>
+    </tr>
+    <tr><td><tt>.ldap.users</td>
+	<td></td>
+	<td>YCPMap</td>
+	<td>Return map of users, generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.by_name</td>
+	<td></td>
+	<td>YCPMap</td>
+	<td>Return mapping of user names to UID's. Map was generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.homes</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of home directories, previously generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.uids</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of UID's, previously generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.usernames</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of user names, previously generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.userdns</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of user DN's, previously generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.users.itemlist</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of items for user table, previously generated by
+	    <tt>Execute (.ldap.users.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.groups</td>
+	<td></td>
+	<td>YCPMap</td>
+	<td>Return map of groups (indexed by GID's), generated by
+	    <tt>Execute (.ldap.groups.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.groups.by_name</td>
+	<td></td>
+	<td>YCPMap</td>
+	<td>Return map of groups, indexed by group names. Map was generated by
+	    <tt>Execute (.ldap.groups.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.groups.gids</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of GID's, previously generated by
+	    <tt>Execute (.ldap.groups.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.groups.groupnames</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of group names, previously generated by
+	    <tt>Execute (.ldap.groups.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+    <tr><td><tt>.ldap.groups.itemlist</td>
+	<td></td>
+	<td>YCPList</td>
+	<td>Return list of items for group table, previously generated by
+	    <tt>Execute (.ldap.groups.search)</tt> call.<br>
+	    For the special use of yast2-users module.</td>
+    </tr>
+	
 </TABLE>
 
 <P>
-<H2>Complete Dir paths table</H2>
-The return type of the <TT>Dir()</TT> is always YCPList.
-
-<TABLE>
-	<TR><TH WIDTH="40%" ALIGN="left">Path</TH><TH ALIGN="left">Result</TH></TR>
-	<TR><TD><TT>.ldap</TD>
-	<TD>list with all available directives (currently sublist of ["alias", "pre-install", "post-install", "options"]</TD></TR>
-	<TR>...</TR>
+<H2>Complete Write paths table</H2>
+Return value is YCPBoolean (usually the success of the object method call).
+<p>
+Generaly, 1st argument is a map, containing value of DN (of modified object) and
+possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
+<TABLE border=3>
+    <tr><th width="20%" align="left">Path</th>
+	<th width="10%" align="left">1st argument</th>
+	<th width="10%" align="left">2nd argument</th>
+	<th align="left">Result</th>
+    </tr>
+    <tr><td><tt>.ldap.add</td>
+	<td align="left">YCPMap</td>
+	<td align="left">YCPMap</td>
+	<td>Add a new LDAP object. Second argument is map of its attributes.<br>
+	    <b>Example of attributes map:</b><br>
+	    <tt>$[<br>
+		"objectClass":      [ "organizationalUnit"],<br>
+		"ou":               "Groups"<br>
+	    ]<br></tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.modify</td>
+	<td align="left">YCPMap</td>
+	<td align="left">YCPMap</td>
+	<td>Modifies an existing LDAP object. Second argument is map of
+	    attributes (and its values) which are to be changed/added/deleted.
+	    To remove some attribute, use empty value ("" or []) for it.<br>
+	    If 1st argument map contains <tt>"rdn"</tt> key, object will be
+	    renamed using the value of <tt>"rdn"</tt> as a new Relative
+	    Distinguished Name.<br>
+	    For moving the object, use additionaly <tt>"newParentDN"</tt> value
+	    for new parent DN of object.<br>
+	    If argument map contains <tt>"check_attrs"</tt> key with <tt>true
+	    </tt> value, there will be done a search for current object's
+	    attributes before modify. When some attribute in attributes map
+	    (2nd argument) has an empty value it will be ignored, if the object
+	    currently has not such attribute. Otherwise (<tt>"check_attrs"</tt>
+	    is false as default), this situation leads to error message,
+	    because non-existent attribute is set for deletion.<br>
+	    <b>Example of argument map:</b><br>
+	    <tt>$[<br>
+		"dn":               "ou=people,dc=suse,dc=cz",<br>
+	        "rdn":              "ou=lide",<br>
+		"delOldRDN":	    true<br>
+	    ]<br></tt>
+	    <b>Example of attributes map:</b><br>
+	    <tt>$[<br>
+		"ou":               "lide"<br>
+	    ]<br></tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.delete</td>
+	<td align="left">YCPMap</td>
+	<td align="left">YCPMap</td>
+	<td>Deletes LDAP object.</td>
+    </tr>
 </TABLE>
+
+<P>
+<H2>Complete Execute paths table</H2>
+Return value is YCPBoolean (usually the success of the object method call).
+<p>
+<table border=3>
+    <tr><th width="20%" align="left">Path</th>
+	<th width="15%" align="left">Argument</th>
+	<th align="left">Result</th>
+    </tr>
+    <tr><td><tt>.ldap</td>
+	<td align="left">YCPMap</td>
+	<td>Initialization. Input map has to contain hostname and may contain
+	    port number.<br>
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute(.ldap, $[ "host": "localhost", "port": 389])</tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.bind</td>
+	<td align="left">YCPMap</td>
+	<td>Bind to server. Items of input map should be <tt>"bind_dn"</tt>
+	    and <tt>"bindpw"</tt>. For anonymous acess, let input map empty.
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute(.ldap.bind,
+	    $[ "binddn": "uid=manager,dc=suse,dc=cz", "bindpw": "heslo"])</tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.schema</td>
+	<td align="left">YCPMap</td>
+	<td>Initialize LDAP schema: read it (defined by <tt>"schmema_dn"</tt>),
+	    parse it and save lists of its object classes and attribute types
+	    to internal structures. From now, they are available for
+	    <tt>Read(.ldap.schema.*)</tt> calls.<br>
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute(.ldap.schema, $[ "schema_dn": "cn=Subschema"])</tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.users.search</td>
+	<td align="left">YCPMap</td>
+	<td>LDAP search command for users and groups. Specialized call for the
+	    use of yast2-users module. Additionaly to normal search, it builds
+	    many helper structures - they are read by the calls of type
+	    <tt>Read(.ldap.users.*)</tt> and <tt>Read(.ldap.groups.*)</tt>.<br>
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute(.ldap.schema,<br>
+		$[<br>
+		    "user_base" :       "dc=suse,dc=cz",<br>
+		    "group_base":       "dc=suse,dc=cz",<br>
+		    "user_filter":      "objectClass=posixAccount",<br>
+		    "user_attrs": ["objectClass", "cn", "uid", "uidNumber", "gidNumber"],<br>
+		    "group_filter":     "objectClass=posixGroup",<br>
+		    "group_attrs": ["objectClass", "cn", "gidNumber", "uniqueMember"],<br>
+		    "group_scope":      1,<br>
+		])</tt>
+	    </td>
+    </tr>
+</table>
+
 
 <P>
 <ADDRESS>

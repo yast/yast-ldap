@@ -634,6 +634,35 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 	    y2error("Wrong path '%s' in Read().", path->toString().c_str());
 	}
     }
+    else if (path->length() > 2) {
+
+	/**
+	 * check if given object class exists in schema
+	 * Read(.ldap.schema.oc.check, $[ "name": name]) -> boolean
+	 */
+	if (PC(0) == "schema" && (PC(1) == "object_class" || PC(1) == "oc") &&
+	    PC(2) == "check") {
+
+	    if (!schema) {
+		y2error ("Schema not read! Use Execute(.ldap.schema) before.");
+		return YCPBoolean (false);
+	    }
+
+	    string name		= getValue (argmap, "name");
+	    if (name == "") {
+		y2error ("'name' attribute missing!");
+		return YCPBoolean (false);
+	    }
+	    LDAPObjClass oc = schema->getObjectClassByName (name);
+	    if (oc.getName() != "")
+		return YCPBoolean (true);
+	    else
+		return YCPBoolean (false);
+	}
+	else {
+	    y2error("Wrong path '%s' in Read().", path->toString().c_str());
+	}
+    }
     else {
 	y2error("Wrong path '%s' in Read().", path->toString().c_str());
     }
@@ -911,6 +940,9 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    map <string, string > grouplists;
 	    // for each group, store users having this group as default:
 	    map <int, string> more_usersmap;
+
+	    // when true, no error message is written when object was not found
+	    bool not_found_ok	= true;
    
 	    // first, search for groups
 	    LDAPSearchResults* entries = NULL;
@@ -919,8 +951,13 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		       group_attrs, false, cons);
 	    }
 	    catch  (LDAPException e) {
-		debug_exception (e, "searching");
-		return YCPBoolean (false);
+		if (not_found_ok && e.getResultCode() == 32) {
+		    y2warning ("object not found");
+		}
+		else {
+		    debug_exception (e, "searching");
+		    return YCPBoolean (false);
+		}
             }
 
 	    // initialize the maps/lists to be filled

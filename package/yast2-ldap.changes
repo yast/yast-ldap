@@ -1,4 +1,16 @@
 -------------------------------------------------------------------
+Mon Sep  1 16:58:14 CEST 2003 - jsuchome@suse.cz
+
+- added test for object class existence
+- 2.8.3
+
+-------------------------------------------------------------------
+Tue Aug 12 18:59:20 CEST 2003 - jsuchome@suse.de
+
+- updated agent documentation
+- 2.8.2
+
+-------------------------------------------------------------------
 Fri Jul 11 15:35:39 CEST 2003 - jsuchome@suse.de
 
 - groups are now groupOfUniqueNames
