@@ -44,7 +44,10 @@ YCPString addBlanks (int uid)
  */
 LdapAgent::LdapAgent() : SCRAgent()
 {
-    schema = NULL;
+    schema		= NULL;
+    ldap		= NULL;
+    cons		= NULL;
+    ldap_initialized	= false;
 }
 
 /**
@@ -241,12 +244,23 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 	
-	if (sl.size() > 1 && key != "uid")
-	{
+	// list of binary values FIXME correct checking
+	if (key.find (";binary") != string::npos) {
+	    BerValue **val = i->getBerValues();
+	    YCPList listvalue;
+	    for (int j=0; j < i->getNumValues (); j++) {
+		BerValue *one_val = val[j];
+		listvalue->add (YCPByteblock ((const unsigned char*) one_val->bv_val, one_val->bv_len));
+	    }
+	    value = listvalue;
+	    ber_bvecfree(val);
+	}
+	// list of strings
+	else if (sl.size() > 1 && key != "uid") {
 	    value = YCPList (list);
 	}
-	else
-	{
+	// string or integer
+	else {
 	    string val = *(sl.begin());
 	    if ( key == "gidnumber" || key == "uidnumber")
 		value = YCPInteger (atoi (val.c_str()));
@@ -471,7 +485,6 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
     YCPMap argmap;
     if (!arg.isNull() && arg->isMap())
     	argmap = arg->asMap();
-
     if (!ldap_initialized && PC(0) != "error") {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
 	ldap_error = "init";
@@ -1591,7 +1604,6 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		}
 		groups_by_name->add (YCPString (groupname), YCPInteger (gid));
 	    }
-
 	    return YCPBoolean(true);
 	}
 	else {

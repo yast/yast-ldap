@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Wed Jul 14 15:00:49 CEST 2004 - jsuchome@suse.cz
+
+- correctly initialize global values in constructor
+- read binary values also for users/groups
+- 2.10.1
+
+-------------------------------------------------------------------
 Fri Jun 11 15:43:31 CEST 2004 - jsuchome@suse.cz
 
 - implemented Execute (.ldap.ping) call (#41354)
