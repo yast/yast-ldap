@@ -472,7 +472,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
     if (!arg.isNull() && arg->isMap())
     	argmap = arg->asMap();
 
-    if (!ldap_initialized) {
+    if (!ldap_initialized && PC(0) != "error") {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
 	ldap_error = "init";
 	return YCPVoid();
@@ -1142,7 +1142,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	
     /**
      * initialization: Execute (.ldap,$[
-     * 	"host": <host>, "port": <port>, "use_tls": "no"|"yes"|"try" ] )
+     * 	"hostname": <host>, "port": <port>, "use_tls": "no"|"yes"|"try" ] )
      */
     if (path->length() == 0) {
 
@@ -1173,6 +1173,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    // check if starting TLS failed
 	    if (error != 0) {
 		y2warning ("TLS cannot be started");
+		delete ldap;
 		// return an error
 		if (tls == "yes") {
 		    ldap_error_code	= error;
@@ -1194,7 +1195,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	ldap_initialized = true;
 	return YCPBoolean (true);
     }
-    if (!ldap_initialized) {
+
+    if (!ldap_initialized && PC(0) != "ping") {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
 	ldap_error = "init";
 	return YCPBoolean (false);
@@ -1203,10 +1205,42 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
     if (path->length() == 1) {
 
 	/**
+	 * ping: Execute (.ldap.ping, $[ "hostname": <host>, "port": <port> ] )
+	 * returns true if server is running
+	 */
+	if (PC(0) == "ping") {
+
+	    string host_tmp = getValue (argmap, "hostname");
+	    if (host_tmp == "") {
+		y2error ("Missing hostname of LDAPHost, aborting");
+		return YCPBoolean (false);
+	    }
+	    int port_tmp = getIntValue (argmap, "port", DEFAULT_PORT);
+
+	    LDAPConnection *ldap_tmp = new LDAPConnection (host_tmp, port_tmp);
+	    if (!ldap_tmp) {
+		delete ldap_tmp;
+		y2error ("ping: failed to create LDAPConnection object");
+		return YCPBoolean (false);
+	    }
+	    LDAPSearchResults* entries = NULL;
+	    try {
+		entries = ldap_tmp->search ("");
+	    }
+	    catch  (LDAPException e) {
+		delete ldap_tmp;
+		debug_exception (e, "doing the ping");
+		return YCPBoolean (false);
+            }
+
+	    delete ldap_tmp;
+	    return YCPBoolean(true);
+	}
+	/**
 	 * bind: Execute(.ldap.bind, $[ "bind_dn": binddn, "bindpw": bindpw] )
 	 * for anonymous acess, call bind with empty map
 	 */
-	if (PC(0) == "bind") {
+	else if (PC(0) == "bind") {
 
 	    bind_dn = getValue (argmap, "bind_dn");
 	    bind_pw = getValue (argmap, "bind_pw");
@@ -1220,6 +1254,9 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    return YCPBoolean(true);
 	}
+	/**
+	 * unbind: Execute(.ldap.unbind)
+	 */
 	else if (PC(0) == "unbind") {
 	    ldap->unbind();
 	    return YCPBoolean(true);
@@ -1240,7 +1277,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    catch  (LDAPException e) {
 		debug_exception (e, "searching for " + schema_dn);
-		return YCPBoolean (true);
+		return YCPBoolean (false);
             }
 	    // go throught result and fill schema object
 	    if (entries != 0) {

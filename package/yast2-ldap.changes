@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Jun 11 15:43:31 CEST 2004 - jsuchome@suse.cz
+
+- implemented Execute (.ldap.ping) call (#41354)
+- 2.10.0
+
+-------------------------------------------------------------------
 Mon May 17 17:34:11 CEST 2004 - jsuchome@suse.cz
 
 - enhanced error logging
