@@ -1220,6 +1220,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    LDAPConnection *ldap_tmp = new LDAPConnection (host_tmp, port_tmp);
 	    if (!ldap_tmp) {
 		delete ldap_tmp;
+		ldap_error = "init";
 		y2error ("ping: failed to create LDAPConnection object");
 		return YCPBoolean (false);
 	    }

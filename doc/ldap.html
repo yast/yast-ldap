@@ -307,10 +307,23 @@ Return value is YCPBoolean (usually the success of the object method call).
 	    ])</tt>
 	    </td>
     </tr>
+    <tr><td><tt>.ldap.ping</td>
+	<td align="left">YCPMap</td>
+	<td>Checks if it is possible to run a search query on the server.
+	    Return value is boolean; in case false is returned, it is possible
+	    that server is not running - check the error value via error read
+	    call.
+	    Input map has to contain hostname and may contain port number.
+	    <br>
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute(.ldap.ping, $[ "hostname" : "localhost",])</tt>
+	    </td>
+    </tr>
     <tr><td><tt>.ldap.bind</td>
 	<td align="left">YCPMap</td>
 	<td>Bind to server. Items of input map should be <tt>"bind_dn"</tt>
 	    and <tt>"bind_pw"</tt>. For anonymous acess, let input map empty.
+	    <br>
 	    <b>Example of SCR call:</b><br>
 	    <tt>Execute(.ldap.bind,
 	    $[ "bind_dn": "uid=manager,dc=suse,dc=cz", "bind_pw": "heslo"])</tt>
