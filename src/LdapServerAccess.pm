@@ -45,9 +45,11 @@ sub InstallLdapServer {
 
 # Add given schemas to the list of current LDAP server schemas
 # 1st parameter: list of whole paths to schema files which should be added
+# 2nd parameter: restart LDAP server after adding ?
+# return value: was anyting modified? (boolean) or undef on error
 BEGIN {$TYPEINFO{AddLdapSchemas} = ["function",
     "boolean",
-    ["list","string"]];
+    ["list","string"], "boolean"];
 }
 sub AddLdapSchemas {
 
@@ -64,7 +66,7 @@ sub AddLdapSchemas {
     if (! $self->InstallLdapServer ())
     {
 	y2error ("Cannot install $package_name, not checking LDAP schemas");
-	return Boolean (0);
+	return undef;
     }
 
     require YaPI::LdapServer;
@@ -73,7 +75,7 @@ sub AddLdapSchemas {
     if (! defined ($schemas_ref) || ref ($schemas_ref) ne "ARRAY")
     {
 	y2error ("Retrieving current LDAP schemas failed");
-	return Boolean (0);
+	return undef;
     }
     my @schemas = @{$schemas_ref};
     foreach my $schema (@new_schemas) {
@@ -89,13 +91,116 @@ sub AddLdapSchemas {
 	    y2milestone ("Schema $schema is already included");
 	}
     }
-    my $ret = 1;
-    if ($schema_added)
-    {
-	$ret = YaPI::LdapServer->WriteSchemaIncludeList (\@schemas);
-	$ret = $ret && YaPI::LdapServer->SwitchService(1);
+    if ($schema_added) {
+	if (! YaPI::LdapServer->WriteSchemaIncludeList (\@schemas)) {
+	    return undef;
+	}
+	if ($restart) {
+	    YaPI::LdapServer->SwitchService (1);
+	}
     }
-    return Boolean ($ret);
+    return Boolean ($schema_added);
+}
+
+# Add new index to ldap server database
+# 1. map describing the index (see YaPI::LdapServer::AddIndex)
+# 2. LDAP suffix
+# 3. should be server restarted at the end?
+# return value: was anyting modified? (boolean) or undef on error
+BEGIN {$TYPEINFO{AddIndex} = ["function",
+    "boolean",
+    ["map", "string","string"], "string", "boolean"];
+}
+sub AddIndex {
+
+    my $self		= shift;
+    my $new_index	= shift;
+    my $suffix		= shift;
+    my $restart		= shift;
+    my $present		= 0;
+
+    if (Mode->config ()) {
+	return Boolean (1);
+    }
+
+    if (!defined $new_index || ref ($new_index) ne "HASH" ||
+	 !defined $new_index->{"attr"} || !defined $new_index->{"param"}) {
+	
+	y2error ("wrong or missing 'index' parameter");
+	return undef;
+    }
+
+    my $attr		= $new_index->{"attr"};
+    my $param		= $new_index->{"param"};
+
+    if (! $self->InstallLdapServer ()) {
+	y2error ("Cannot install $package_name, not checking LDAP schemas");
+	return undef;
+    }
+
+    require YaPI::LdapServer;
+    my $indices		= YaPI::LdapServer->ReadIndex ($suffix);
+    if (defined $indices && ref ($indices) eq "ARRAY") {
+	    
+	foreach my $index (@$indices) {
+	    my $attrs	= $index->{"attr"} || "";
+	    my $params	= $index->{"param"} || "";
+
+	    my @current_attrs	= grep /^$attr$/, split (/,/, $attrs);
+	    my @current_params	= grep /^$param$/, split (/,/, $param);
+
+	    if (scalar (@current_attrs) >0 && scalar (@current_params) > 0) {
+		y2milestone ("index for $attr already present");
+		$present	= 1;
+	    }
+	}
+	
+	if (! $present) {
+	    y2milestone ("$attr index missing, adding");
+	    if (!YaPI::LdapServer->AddIndex ($suffix, $new_index)) {
+		return undef;
+	    }
+	    if ($restart) {
+		YaPI::LdapServer->SwitchService(1);
+	    }
+	}
+	return Boolean (!$present);
+    }
+    return undef;
+}
+
+# adapt LDAP server ACL: allow administrator access, but deny everyone else
+# 1. param: administrator's DN
+# 2. param: restart LDAP server?
+# return value: was anyting modified? (boolean) or undef on error
+BEGIN {$TYPEINFO{AddSambaACLHack} = ["function",
+    "boolean",
+    "string", "boolean"]
+}
+sub AddSambaACLHack {
+
+    my $self		= shift;
+    my $dn		= shift;
+    my $restart		= shift;
+
+    if (Mode->config ()) {
+	return Boolean (1);
+    }
+
+    if (! $self->InstallLdapServer ()) {
+	y2error ("Cannot install $package_name, not checking LDAP schemas");
+	return undef;
+    }
+
+    require YaPI::LdapServer;
+
+    if (!SCR->Write (".ldapserver.sambaACLHack", $dn)) {
+	return undef;
+    }
+    if ($restart) {
+	YaPI::LdapServer->SwitchService(1);
+    }
+    return Boolean (1);
 }
 
 42;
