@@ -1187,6 +1187,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    if (error != 0) {
 		y2warning ("TLS cannot be started");
 		delete ldap;
+		ldap	= NULL;
 		// return an error
 		if (tls == "yes") {
 		    ldap_error_code	= error;
