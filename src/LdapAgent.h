@@ -101,7 +101,22 @@ private:
      */
     YCPMap getObjectAttributes (string dn);
 
+    /**
+     * deletes all children of given entry
+     */
+    YCPBoolean deleteSubTree (string dn);
+
+    /**
+     * move the entry in LDAP tree with all its children
+     */
+    YCPBoolean moveWithSubtree (string dn, string new_dn, string parent_dn);
     
+    /**
+     * copy the LDAP entry to new place
+     * (+ changes DN-constructing attribute, like cn,uid,ou etc.)
+     */
+    YCPBoolean copyOneEntry (string dn, string new_dn);
+ 
     void debug_exception (LDAPException e, char* action);
 
     /**

@@ -783,6 +783,182 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
     return YCPVoid();
 }
 
+// delete children of LDAP entry (code from rhafer)
+YCPBoolean LdapAgent::deleteSubTree (string dn) {
+    y2debug ("deleting children of '%s'", dn.c_str());
+    if (ldap) {
+	LDAPSearchResults* res	= 0;
+        LDAPEntry* entry	= 0;
+        StringList attrs;
+        attrs.add ("dn");
+        try {
+	    // search for object children
+            res = ldap->search (dn, LDAPConnection::SEARCH_ONE,
+                    "objectclass=*", attrs, true);
+            if (!(entry = res->getNext())) {
+                delete entry;
+                entry=0;
+                delete res;
+                res=0;
+            } else {
+                do {
+		    deleteSubTree (entry->getDN ());
+		    y2debug ("deleting entry:'%s'", entry->getDN().c_str());
+		    try {
+			ldap->del (entry->getDN());
+		    }
+		    catch (LDAPException e) {
+			debug_exception (e, "deleting");
+			delete entry;
+			return YCPBoolean (false);
+		    }
+                    delete entry;
+                    entry = 0;
+                } while ((entry=res->getNext()));
+            }
+        } catch (LDAPException e) {
+            delete res;
+            delete entry;
+	    debug_exception (e, "searching for subtree");
+	    return YCPBoolean (false);
+        }
+    }
+    return YCPBoolean (true);
+}
+
+// copy the entry to new place
+YCPBoolean LdapAgent::copyOneEntry (string dn, string new_dn) {
+
+    if (!ldap) {
+	ldap_error = "init";
+	return YCPBoolean (false);
+    }
+    y2debug ("copying object %s to %s", dn.c_str(), new_dn.c_str());
+    // 1. search for all attributes of current entry
+    LDAPSearchResults* entries 	= NULL;
+    try {
+	// search for object children
+        entries = ldap->search (dn, 0);
+	LDAPEntry* entry;
+	entry	= 0;
+	if (entries != 0)
+	    entry	= entries->getNext();
+        if (entry) {
+
+	    YCPMap e = getSearchedEntry (entry, false);
+
+	    LDAPAttributeList* attrs = new LDAPAttributeList();
+
+	    // change the attribute for creating DN (cn,uid etc.) if necessary
+	    string rdn	= new_dn.substr (0, new_dn.find (","));
+	    string attr	= rdn.substr (0, rdn.find ("="));
+
+	    string attr_val	= rdn.substr (rdn.find("=")+ 1);
+	    YCPValue v = e->value (YCPString (attr));
+	    if (v->isList ()) {
+		YCPList l	= v->asList();
+		if (!l->contains (YCPString (attr_val))) {
+		    l->add (YCPString (attr_val));
+		    e->add (YCPString (attr), l);
+		}
+	    }
+	    
+	    // list of attributes for new entry
+	    generate_attr_list (attrs, e);
+
+	    y2debug ("(add call) dn:'%s'", new_dn.c_str());
+	    LDAPEntry* entry = new LDAPEntry (new_dn, attrs);
+	    try {
+		ldap->add (entry);
+	    }
+	    catch (LDAPException e) {
+		debug_exception (e, "copying");
+		delete entries;
+		return YCPBoolean (false);
+	    }
+	}
+    } catch (LDAPException e) {
+        delete entries;
+	debug_exception (e, "searching");
+	return YCPBoolean (false);
+    }
+    return YCPBoolean (true);
+}
+ 
+
+// move the entry in LDAP tree with all its children
+YCPBoolean LdapAgent::moveWithSubtree (string dn, string new_dn, string parent_dn) {
+
+    YCPBoolean ret = YCPBoolean(true);
+
+    if (!ldap) {
+	ldap_error = "init";
+	return YCPBoolean (false);
+    }
+    y2debug ("moving object '%s'", dn.c_str());
+    // 1. check if entry has children
+    LDAPSearchResults* entries 	= NULL;
+    try {
+	// search for object children
+        entries = ldap->search (dn, 1, "objectclass=*");
+	LDAPEntry* entry;
+	entry	= 0;
+	if (entries != 0)
+	    entry	= entries->getNext();
+        if (entry) {
+	    // 1a has children -> create new entry on the new place
+	    ret	= copyOneEntry (dn, new_dn);
+	    if (!ret->value ()) {
+		delete entries;
+		return ret;
+	    }
+
+	    // 2. call moveWithSubtree on child entry
+	    do {
+		// we must generate new dn of child entry
+		string child_dn	= entry->getDN();
+		string rdn	= child_dn.substr (0, child_dn.find (","));
+		child_dn	= rdn + "," + new_dn;
+
+		y2debug ("dn of children object: %s", entry->getDN().c_str());
+		ret = moveWithSubtree (entry->getDN(), child_dn, new_dn);
+	    }
+	    while (ret->value () && (entry = entries->getNext()));
+
+	    if (!ret->value ()) {
+		delete entries;
+		return ret;
+	    }
+	    // 3. delete original entry (should have no subtree now)
+	    y2debug ("(delete call) dn:'%s'", dn.c_str());
+	    try {
+		ldap->del (dn);
+	    }
+	    catch (LDAPException e) {
+		debug_exception (e, "deleting");
+		return YCPBoolean (false);
+	    }
+   	}
+	else {
+	    // 1b no children, call rename
+	    string rdn		= new_dn.substr (0, dn.find (","));
+	    try {
+		ldap->rename (dn, rdn, true, parent_dn);
+	    }
+	    catch (LDAPException e) {
+		delete entries;
+		debug_exception (e, "renaming");
+		return YCPBoolean (false);
+	    }
+	}
+    } catch (LDAPException e) {
+        delete entries;
+	debug_exception (e, "searching for subtree");
+	return YCPBoolean (false);
+    }
+    return YCPBoolean (true);
+}
+
 /**
  * Write
  */
@@ -860,30 +1036,43 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		ldap_error = "missing_dn";
 		return YCPBoolean (false);
 	    }
+	    string new_dn 	= getValue (argmap, "new_dn");
+	    string newParentDN	= getValue (argmap, "newParentDN");
+
+	    // check for possible object renaming
+   	    if (new_dn != "" && getBoolValue (argmap, "subtree")) {
+		ret = moveWithSubtree (dn, new_dn, newParentDN);
+	    }
+	    else {	
+		string rdn	= getValue (argmap, "rdn");
+		if (rdn == "" && new_dn != "") {
+		    rdn		= new_dn.substr (0, dn.find (","));
+		}
+		if (rdn != "") {
+		    bool delOldRDN	= getBoolValue (argmap, "delOldRDN");
+		    try {
+			ldap->rename (dn, rdn, delOldRDN, newParentDN);
+		    }
+		    catch (LDAPException e) {
+			debug_exception (e, "renaming");
+			return YCPBoolean (false);
+		    }
+		}
+	    }
+	    if (!ret->value()) {
+		// moving with subtree failed
+		return YCPBoolean (false);
+	    }
+
+	    // now edit changed attributes of the entry
 	    YCPValue attrs = YCPVoid();
 	    if (check_attrs) {
 		attrs = getObjectAttributes (dn);
 	    }
-		
 	    // generate the list of modifications from parameters:
 	    LDAPModList *modlist = new LDAPModList();
 	    generate_mod_list (modlist, argmap2, attrs);
 
-	    // check possible object renaming
-	    string rdn = getValue (argmap, "rdn");
-	    if (rdn != "") {
-		bool delOldRDN 		= getBoolValue (argmap, "delOldRDN");
-		string newParentDN	= getValue (argmap, "newParentDN");
-		try {
-		    ldap->rename (dn, rdn, delOldRDN, newParentDN);
-		}
-		catch (LDAPException e) {
-		    debug_exception (e, "renaming");
-		    delete modlist;
-		    return YCPBoolean (false);
-		}
-	    }
-	    string new_dn = getValue (argmap, "new_dn");
 	    if (new_dn != "") {
 		dn = new_dn;
 	    }
@@ -909,6 +1098,13 @@ YCPBoolean LdapAgent::Write(const YCPPath &path, const YCPValue& arg,
 		y2error ("Value of DN is missing or invalid !");
 		ldap_error = "missing_dn";
 		return YCPBoolean (false);
+	    }
+   	    bool delete_subtree = getBoolValue (argmap, "subtree");
+	    if (delete_subtree) {
+		ret = deleteSubTree (dn);
+	    }
+	    if (!ret->value()) {
+		return ret;
 	    }
 	    y2debug ("(delete call) dn:'%s'", dn.c_str());
 	    try {

@@ -228,14 +228,17 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
     <tr><td><tt>.ldap.modify</td>
 	<td align="left">YCPMap</td>
 	<td align="left">YCPMap</td>
-	<td>Modifies an existing LDAP object. Second argument is map of
-	    attributes (and its values) which are to be changed/added/deleted.
+	<td>Modifies an existing LDAP object.<br>
+	    Second argument is map of
+	    attributes (and its values) which should be changed/added/deleted.
 	    To remove some attribute, use empty value ("" or []) for it.<br>
+	    <!--
 	    If 1st argument map contains <tt>"rdn"</tt> key, object will be
 	    renamed using the value of <tt>"rdn"</tt> as a new Relative
 	    Distinguished Name.<br>
-	    Parameter <tt>"new_dn"</tt> (DN of new object) is also necessary for
-	    renaming.
+	    -->
+	    Parameter <tt>"new_dn"</tt> (DN of new object) is necessary for
+	    renaming.<br>
 	    For moving the object, use additionaly <tt>"newParentDN"</tt> value
 	    for new parent DN of object.<br>
 	    If argument map contains <tt>"check_attrs"</tt> key with <tt>true
@@ -245,12 +248,19 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
 	    currently has not such attribute. Otherwise (<tt>"check_attrs"</tt>
 	    is false as default), this situation leads to error message,
 	    because non-existent attribute is set for deletion.<br>
+	    If you want to rename or move an entry, which is not a leaf of LDAP
+	    tree, you must include <tt>"subtree"</tt> key (with true as a value)
+	    in argument map. In 
+	    such a case, the modify operation could take more time, according
+	    to the subtree size, because all subtree items must be copied to new
+	    location and deleted from the old one.<br>
+	    
 	    <b>Example of argument map:</b><br>
 	    <tt>$[<br>
 		"dn":               "ou=people,dc=suse,dc=cz",<br>
-	        "rdn":              "ou=lide",<br>
 		"new_dn":	    "ou=lide,dc=suse,dc=cz"<br>
 		"deleteOldRDN":	    true<br>
+		"subtree":	    true<br>
 	    ]<br></tt>
 	    <b>Example of attributes map:</b><br>
 	    <tt>$[<br>
@@ -261,7 +271,14 @@ possibly other values. (e.g.<tt>$[ "dn" : "ou=Groups,dc=suse,dc=cz" ]</tt>)
     <tr><td><tt>.ldap.delete</td>
 	<td align="left">YCPMap</td>
 	<td align="left">YCPMap</td>
-	<td>Deletes LDAP object.</td>
+	<td>Deletes LDAP object. With "subtree" set to true, it will
+	delete the whole subtree of the given entry. <b>Use carefully!</b><br>
+	    <b>Example of argument map:</b><br>
+	    <tt>$[<br>
+		"dn":         "ou=people,dc=suse,dc=cz",<br>
+		"subtree":    true<br>
+	    ]<br></tt>
+	</td>
     </tr>
 </TABLE>
 
