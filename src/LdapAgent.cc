@@ -1019,6 +1019,16 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    return YCPBoolean (true);
 	}
+	else if (PC(0) == "start_tls") {
+	    
+	    int error = ldap->start_tls ();
+	    if (error != 0) {
+		ldap_error_code	= error;
+		ldap_error	= string (ldap_err2string (error));
+		return YCPBoolean (false);
+	    }
+	    return YCPBoolean(true);
+	}
 	else {
 	   y2error("Wrong path '%s' in Execute().", path->toString().c_str());
 	}

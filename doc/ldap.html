@@ -283,7 +283,15 @@ Return value is YCPBoolean (usually the success of the object method call).
 	    and <tt>"bindpw"</tt>. For anonymous acess, let input map empty.
 	    <b>Example of SCR call:</b><br>
 	    <tt>Execute(.ldap.bind,
-	    $[ "binddn": "uid=manager,dc=suse,dc=cz", "bindpw": "heslo"])</tt>
+	    $[ "bind_dn": "uid=manager,dc=suse,dc=cz", "bind_pw": "heslo"])</tt>
+	    </td>
+    </tr>
+    <tr><td><tt>.ldap.start_tls</td>
+	<td align="left">none</td>
+	<td>Starts TLS on current connection. Returns false when operation
+	failed (check error via ldap.error then).
+	    <b>Example of SCR call:</b><br>
+	    <tt>Execute (.ldap.start_tls)</tt>
 	    </td>
     </tr>
     <tr><td><tt>.ldap.schema</td>
@@ -312,6 +320,7 @@ Return value is YCPBoolean (usually the success of the object method call).
 		    "group_filter":     "objectClass=posixGroup",<br>
 		    "group_attrs": ["objectClass", "cn", "gidNumber", "uniqueMember"],<br>
 		    "group_scope":      1,<br>
+		    "member_attribute":      "uniquemember",<br>
 		])</tt>
 	    </td>
     </tr>

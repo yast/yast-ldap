@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Mar 30 10:11:18 CEST 2004 - jsuchome@suse.cz
+
+- enable TLS support (#37393)
+- 2.9.9
+
+-------------------------------------------------------------------
 Mon Mar 29 17:13:41 CEST 2004 - jsuchome@suse.cz
 
 - more on binary values: enable multi valued attributes 
