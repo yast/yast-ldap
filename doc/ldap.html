@@ -57,7 +57,7 @@ and also for the list of possible future enhancements.
   	<td></td>
   	<td align="left">YCPMap</td>
 	<TD>Map with last error message and code number.<br>Example of result:
-	    <tt>$[ "msg": "Can't contact LDAP server", "code": 81 ]</tt>
+	    <tt>$[ "msg": "Can't contact LDAP server", "code": 81, "server_msg": "Some additional error info from LDAP server" ]</tt>
 	</TD></TR>
     <tr><td><tt>.ldap.search</td>
 	<td align="left">YCPMap</td>
@@ -290,7 +290,7 @@ Return value is YCPBoolean (usually the success of the object method call).
     <tr><td><tt>.ldap.bind</td>
 	<td align="left">YCPMap</td>
 	<td>Bind to server. Items of input map should be <tt>"bind_dn"</tt>
-	    and <tt>"bindpw"</tt>. For anonymous acess, let input map empty.
+	    and <tt>"bind_pw"</tt>. For anonymous acess, let input map empty.
 	    <b>Example of SCR call:</b><br>
 	    <tt>Execute(.ldap.bind,
 	    $[ "bind_dn": "uid=manager,dc=suse,dc=cz", "bind_pw": "heslo"])</tt>

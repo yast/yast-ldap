@@ -39,6 +39,8 @@ private:
     string bind_dn;
     string bind_pw;
     string ldap_error;
+    string server_error;
+
     int ldap_error_code;
     bool ldap_initialized;
 

@@ -445,8 +445,10 @@ void LdapAgent::debug_exception (LDAPException e, char* action)
     ldap_error_code = e.getResultCode();
     y2error ("ldap error while %s (%i): %s", action, ldap_error_code,
 	    ldap_error.c_str());
-    if (e.getServerMsg() != "")
+    if (e.getServerMsg() != "") {
 	y2error ("additional info: %s", e.getServerMsg().c_str());
+	server_error = e.getServerMsg();
+    }
 }
 
 /**
@@ -484,8 +486,10 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	if (PC(0) == "error") {
 	    YCPMap retmap;
 	    retmap->add (YCPString ("msg"), YCPString (ldap_error));
+	    retmap->add (YCPString ("server_msg"), YCPString (server_error));
 	    retmap->add (YCPString ("code"), YCPInteger (ldap_error_code));
 	    ldap_error = "";
+	    server_error = "";
 	    ldap_error_code = 0;
 	    return retmap;
 	}

@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Mon Apr 19 17:52:45 CEST 2004 - jsuchome@suse.cz
+
+- on error, return also additional message produced by server (#38668)
+
+-------------------------------------------------------------------
 Tue Apr 13 17:04:02 CEST 2004 - jsuchome@suse.cz
 
 - "include_dn" option: DN could be included in a map of each entry
