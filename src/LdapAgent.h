@@ -57,6 +57,7 @@ private:
 	    uidlist,
 	    homelist,
 	    usernamelist,
+	    userdnlist,
 	    groups_itemlist,
 	    groupnamelist,
 	    gidlist;

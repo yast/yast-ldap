@@ -175,20 +175,13 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry)
 	    key = "gid";
 	else if (key == "cn")
 	    key = "groupname";
-//	else if (key == "memberUid") //FIXME "member"
-	else if (key == "member")
-	{
-	    key = "userlist";
-	}
-
-	if (sl.size() > 1 || key == "userlist")
+	if (sl.size() > 1 || key == "uniqueMember")
 	{
 	    value = YCPList (list);
 	}
 	else
 	{
 	    string val = *(sl.begin());
-	    // TODO check other types?
 	    if ( key == "gid" )
 		value = YCPInteger (atoi (val.c_str()));
 	    else
@@ -226,14 +219,13 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	    key = "gid";
 	else if (key == "cn")
 	    key = "fullname";
-	else if (key == "uid") // TODO from object config: namingAttribute
+	else if (key == "uid")
 	    key = "username";
 	else if (key == "homeDirectory")
 	    key = "home";
 	else if (key == "loginShell")
 	    key = "shell";
 
-	// TODO what about shadow entries?
 	if (sl.size() > 1)
 	{
 	    value = YCPList (list);
@@ -241,7 +233,6 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	else
 	{
 	    string val = *(sl.begin());
-	    // TODO check other types
 	    if ( key == "gid" || key == "uid")
 		value = YCPInteger (atoi (val.c_str()));
 	    else
@@ -598,6 +589,13 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg)
 	    return usernamelist;
 	}
 	/**
+	 * get the list of user DN's (used for users module)
+	 * Read(.ldap.users.userdns) -> list
+	 */
+	else if (PC(0) == "users" && PC(1) == "userdns") {
+	    return userdnlist;
+	}
+	/**
 	 * get the items for user table (used for users module)
 	 * Read(.ldap.users.itemlist) -> list of items
 	 */
@@ -935,6 +933,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    uidlist = YCPList();
 	    homelist = YCPList();
 	    usernamelist = YCPList();
+	    userdnlist = YCPList();
 	    groups_itemlist = YCPList();
 	    groupnamelist = YCPList();
 	    gidlist = YCPList();
@@ -959,21 +958,26 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    string groupname = getValue (group, "groupname");
 		    
 		    // go through userlist of this group
-		    YCPList ul = getListValue (group, "userlist");
+		    YCPList ul = getListValue (group, "uniqueMember");
 		    string s_ul;
 		    for (int i=0; i < ul->size(); i++) {
-			// for each user in userlist add this group to the
-			// map of type "user->his groups"
-			// FIXME "user" is whole DN for groupOfNames!
-			string user = ul->value(i)->asString()->value();
-			if (grouplists.find (user) != grouplists.end())
-			    grouplists [user] += ",";
-			grouplists[user] += groupname;
-			if (i>0) s_ul += ",";
-			s_ul += user;
+			// For each user in userlist add this group to the
+			// map of type "user->his groups".
+			string udn = ul->value(i)->asString()->value();
+			if (grouplists.find (udn) != grouplists.end())
+			    grouplists [udn] += ",";
+			grouplists[udn] += groupname;
+			if (itemlists) {
+			    string rest = udn.substr (udn.find ("=") + 1);
+			    string user = rest.substr (0, rest.find (","));
+			    if (i>0) s_ul += ",";
+			    s_ul += user;
+			}
 		    }
-		    // change list of users to string
-		    group->add (YCPString ("userlist"), YCPString(s_ul));
+		    // change list of users to string (need only for itemlist)
+		    if (itemlists) {
+			group->add (YCPString ("userlist"), YCPString(s_ul));
+		    }
 		    // ------- finally add new item to return maps
 		    groups->add (YCPInteger (gid), group);
 		    groupnamelist->add (YCPString (groupname));
@@ -984,7 +988,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	      }
 	      catch (LDAPReferralException e) {
 		y2error ("caught referral.");
-		ldap_error = "referrall"; //TODO what now?
+		ldap_error = "referrall"; 
 	      }
 	      catch  (LDAPException e) {
 		debug_exception (e, "going through search result");
@@ -1014,12 +1018,13 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		if (entry != 0) {
 		    // get the map of user
 		    YCPMap user = getUserEntry (entry);
-		    user->add (YCPString("dn"), YCPString(entry->getDN()));
+		    string dn = entry->getDN();
+		    user->add (YCPString("dn"), YCPString(dn));
 		    // check it
 		    int uid = getIntValue (user, "uid", -1);
 		    if (uid == -1) {
 			y2warning("User with dn '%s' has no uidNumber?",
-			    entry->getDN().c_str());
+			    dn.c_str());
 			continue;
 		    }
 		    // get the name of default group
@@ -1034,8 +1039,12 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    // get the list of groups user belongs to
 		    string username = getValue (user, "username");
 		    string grouplist; 
+		    /*
 		    if (grouplists.find (username) != grouplists.end())
 			grouplist = grouplists[username];
+		    */
+		    if (grouplists.find (dn) != grouplists.end())
+			grouplist = grouplists[dn];
 		    user->add (YCPString ("grouplist"), YCPString (grouplist));
 		    // default group of this user has to know of this user:
 		    if (more_usersmap.find (gid) != more_usersmap.end())
@@ -1069,16 +1078,15 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    users_by_name->add (YCPString (username), YCPInteger (uid));
 		    uidlist->add (YCPInteger (uid));
 		    usernamelist->add (YCPString (username));
+		    userdnlist->add (YCPString (dn));
 		    homelist->add (YCPString (getValue (user, "home")));
-
-		    // TODO last uid -> use Ralf's proposal
 		}
 		else ok = false;
 		delete entry;
 	      }
 	      catch (LDAPReferralException e) {
 		y2error ("caught referral.");
-		ldap_error = "referrall"; //TODO what now?
+		ldap_error = "referrall";
 	      }
 	      catch  (LDAPException e) {
 		debug_exception (e, "going through search result");
@@ -1118,6 +1126,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			    all_users.find_first_of (",", ANSWER)) + ",...";
 		    item->add (YCPString (all_users));
 		    groups_itemlist->add (item);
+		    // remove userlist (was used only for items generation)
+		    group->remove (YCPString ("userlist"));
 		}
 		groups_by_name->add (YCPString (groupname), group);
 	    }

@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Jul 11 15:35:39 CEST 2003 - jsuchome@suse.de
+
+- groups are now groupOfUniqueNames
+
+-------------------------------------------------------------------
 Wed Jul  2 13:24:32 CEST 2003 - jsuchome@suse.de
 
 - schema support (reading, queries)
