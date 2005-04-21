@@ -1182,19 +1182,21 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	// start TLS if proper parameter is given
 	string tls	= getValue (argmap, "use_tls");
 	if (tls == "try" || tls == "yes") {
-	    int error = ldap->start_tls ();
-	    // check if starting TLS failed
-	    if (error != 0) {
-		y2warning ("TLS cannot be started");
+	    try {
+		ldap->start_tls ();
+	    }
+	    catch  (LDAPException e) {
+		// check if starting TLS failed
+		debug_exception (e, "starting TLS");
 		delete ldap;
 		ldap	= NULL;
-		// return an error
+		// return an error if TLS is required
 		if (tls == "yes") {
-		    ldap_error_code	= error;
-		    ldap_error		= string (ldap_err2string (error));
-		    y2error ("%i: %s", ldap_error_code, ldap_error.c_str());
 		    return YCPBoolean (false);
 		}
+		ldap_error = "";
+		server_error = "";
+		ldap_error_code = 0;
 		// "try" -> start again, but without tls
 		ldap = new LDAPConnection (hostname, port, cons);
 		if (!ldap || !cons)
@@ -1204,7 +1206,6 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    return YCPBoolean (false);
 		}
 	    }
-
 	}
 	ldap_initialized = true;
 	return YCPBoolean (true);
@@ -1310,10 +1311,11 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	}
 	else if (PC(0) == "start_tls") {
 	    
-	    int error = ldap->start_tls ();
-	    if (error != 0) {
-		ldap_error_code	= error;
-		ldap_error	= string (ldap_err2string (error));
+	    try {
+		ldap->start_tls ();
+	    }
+	    catch  (LDAPException e) {
+		debug_exception (e, "starting TLS");
 		return YCPBoolean (false);
 	    }
 	    return YCPBoolean(true);
