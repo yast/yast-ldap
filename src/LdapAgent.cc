@@ -591,7 +591,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 			delete entry;
 		    }
 		    catch (LDAPReferralException e) {
-			y2error ("caught referral.");
+			y2warning ("caught referral.");
 			ldap_error = "referrall"; //TODO what now?
 		    }
 		    catch  (LDAPException e) {
@@ -1181,6 +1181,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 
 	// start TLS if proper parameter is given
 	string tls	= getValue (argmap, "use_tls");
+
 	if (tls == "try" || tls == "yes") {
 	    try {
 		ldap->start_tls ();
@@ -1450,7 +1451,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		delete entry;
 	      }
 	      catch (LDAPReferralException e) {
-		y2error ("caught referral.");
+		y2warning ("caught referral.");
 		ldap_error = "referrall"; 
 	      }
 	      catch  (LDAPException e) {
@@ -1562,7 +1563,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		delete entry;
 	      }
 	      catch (LDAPReferralException e) {
-		y2error ("caught referral.");
+		y2warning ("caught referral.");
 		ldap_error = "referrall";
 	      }
 	      catch  (LDAPException e) {
