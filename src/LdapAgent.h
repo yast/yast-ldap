@@ -63,14 +63,22 @@ private:
 	    gids,
 	    group_items;
 
+    /**
+     * search the map for value of given key; both key and value have to be strings
+     * when key is not present, empty string is returned
+     */
     string getValue ( const YCPMap map, const string key);
 
     /**
-     * Search the map for value of given key;
-     * key is string and value is integer
+     * Search the map for value of given key
+     * @param map YCP Map to look in
+     * @param key key we are looking for
+     * @param deflt the default value to be returned if key is not found
      */
     int getIntValue ( const YCPMap map, const string key, int deflt);
+    
     bool getBoolValue (const YCPMap map, const string key);
+
     YCPList getListValue (const YCPMap map, const string key);
 
     /**
@@ -82,9 +90,23 @@ private:
      * converts StringList object to YCPList value
      */
     YCPList stringlist2ycplist (StringList sl);
-    YCPList LdapAgent::stringlist2ycplist_low (StringList sl);
 
+    /**
+     * converts StringList object to YCPList value + each item is lowercased
+     */
+    YCPList stringlist2ycplist_low (StringList sl);
+
+    /**
+     * Return YCP of group, given as LDAP object
+     * @param entry LDAP object of the group [item of search result]
+     * @param member_attribute name of attribute with members ("member"/"uniquemember")
+     */
     YCPMap getGroupEntry (LDAPEntry *entry, string member_attribute);
+
+    /**
+     * Return YCP of user, given as LDAP object
+     * @param entry LDAP object of the user [item of search result]
+     */
     YCPMap getUserEntry (LDAPEntry *entry);
 
     /**
@@ -108,15 +130,23 @@ private:
 
     /**
      * move the entry in LDAP tree with all its children
+     * @param dn DN of original entry
+     * @param new_dn new DN (= new place)
+     * @param parent_dn DN of the new parent of the entry
      */
     YCPBoolean moveWithSubtree (string dn, string new_dn, string parent_dn);
     
     /**
      * copy the LDAP entry to new place
      * (+ changes DN-constructing attribute, like cn,uid,ou etc.)
+     * @param dn DN of original entry
+     * @param new_dn new DN (= new place)
      */
     YCPBoolean copyOneEntry (string dn, string new_dn);
  
+    /**
+     * log the output of an exception and set the return value from agent's call
+     */
     void debug_exception (LDAPException e, string action);
 
     /**

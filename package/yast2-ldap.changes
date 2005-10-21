@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Oct 21 14:20:37 CEST 2005 - jsuchome@suse.cz
+
+- fixed failing builds, added some comments to functions
+- 2.13.0
+
+-------------------------------------------------------------------
 Wed Aug 10 09:30:03 CEST 2005 - jsuchome@suse.cz
 
 - use warnings, not errors for referral exceptions

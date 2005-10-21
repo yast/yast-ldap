@@ -79,9 +79,11 @@ string LdapAgent::getValue (const YCPMap map, const string key)
 	return "";
 }
 
-/*
- * Search the map for value of given key;
- * key is string and value is integer
+/**
+ * Search the map for value of given key
+ * @param map YCP Map to look in
+ * @param key key we are looking for
+ * @param deflt the default value to be returned if key is not found
  */
 int LdapAgent::getIntValue (const YCPMap map, const string key, int deflt)
 {
@@ -138,7 +140,6 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 
 	string key = i->getName();
 	// list of binary values
-	// ------------ FIXME: properly check if value is binary ------------
 	if (key.find (";binary") != string::npos) {
 	    BerValue **val = i->getBerValues();
 	    YCPList listvalue;
@@ -194,6 +195,11 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 }
 
 
+/**
+ * Return YCP of group, given as LDAP object
+ * @param entry LDAP object of the group [item of search result]
+ * @param member_attribute name of attribute with members ("member"/"uniquemember")
+ */
 YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 {
     YCPMap ret;	
@@ -229,6 +235,10 @@ YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 }
 
 
+/**
+ * Return YCP of user, given as LDAP object
+ * @param entry LDAP object of the user [item of search result]
+ */
 YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 {
     YCPMap ret;
@@ -244,7 +254,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 	
-	// list of binary values FIXME correct checking
+	// list of binary values
 	if (key.find (";binary") != string::npos) {
 	    BerValue **val = i->getBerValues();
 	    YCPList listvalue;
@@ -278,6 +288,9 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     return ret;
 }
 
+/**
+ * converts YCPList to StringList object
+ */
 StringList LdapAgent::ycplist2stringlist (YCPList l)
 {
     StringList sl;
@@ -292,6 +305,9 @@ StringList LdapAgent::ycplist2stringlist (YCPList l)
     return sl;
 }
 
+/**
+ * converts StringList object to YCPList value
+ */
 YCPList LdapAgent::stringlist2ycplist (StringList sl)
 {
     YCPList l;
@@ -301,6 +317,9 @@ YCPList LdapAgent::stringlist2ycplist (StringList sl)
     return l;
 }
 
+/**
+ * converts StringList object to YCPList value + each item is lowercased
+ */
 YCPList LdapAgent::stringlist2ycplist_low (StringList sl)
 {
     YCPList l;
@@ -796,7 +815,9 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
     return YCPVoid();
 }
 
-// delete children of LDAP entry (code from rhafer)
+/**
+ * delete children of LDAP entry (code from rhafer)
+ */
 YCPBoolean LdapAgent::deleteSubTree (string dn) {
     y2debug ("deleting children of '%s'", dn.c_str());
     if (ldap) {
@@ -839,7 +860,12 @@ YCPBoolean LdapAgent::deleteSubTree (string dn) {
     return YCPBoolean (true);
 }
 
-// copy the entry to new place
+/**
+ * copy the LDAP entry to new place
+ * (+ changes DN-constructing attribute, like cn,uid,ou etc.)
+ * @param dn DN of original entry
+ * @param new_dn new DN (= new place)
+ */
 YCPBoolean LdapAgent::copyOneEntry (string dn, string new_dn) {
 
     if (!ldap) {
@@ -899,7 +925,12 @@ YCPBoolean LdapAgent::copyOneEntry (string dn, string new_dn) {
 }
  
 
-// move the entry in LDAP tree with all its children
+/**
+ * move the entry in LDAP tree with all its children
+ * @param dn DN of original entry
+ * @param new_dn new DN (= new place)
+ * @param parent_dn DN of the new parent of the entry
+ */
 YCPBoolean LdapAgent::moveWithSubtree (string dn, string new_dn, string parent_dn) {
 
     YCPBoolean ret = YCPBoolean(true);
