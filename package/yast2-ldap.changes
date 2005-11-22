@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Tue Nov 22 11:04:20 CET 2005 - jsuchome@suse.cz
+
+- adapted .users and .groups calls to to index maps names 
+  ("uid"/"cn" attributes)
+- added .users_by_uidnumber and .groups.by_gidnumber paths
+- 2.13.1
+
+-------------------------------------------------------------------
 Fri Oct 21 14:20:37 CEST 2005 - jsuchome@suse.cz
 
 - fixed failing builds, added some comments to functions

@@ -52,6 +52,7 @@ private:
 
     YCPMap  users,
 	    users_by_name,
+	    users_by_uidnumber,
 	    usernames,
 	    userdns,
 	    uids,
@@ -59,6 +60,7 @@ private:
 	    user_items,
 	    groups,
 	    groups_by_name,
+	    groups_by_gidnumber,
 	    groupnames,
 	    gids,
 	    group_items;

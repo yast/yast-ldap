@@ -708,10 +708,18 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	}
 	/**
 	 * get the mapping of usernames to uid's (used for users module)
+	 * DEPRECATED, users_by_name is empty now
 	 * Read(.ldap.users.by_name) -> map
 	 */
 	else if (PC(0) == "users" && PC(1) == "by_name") {
 	    return users_by_name;
+	}
+	/**
+	 * get the mapping of uid numbers to user names (used for users module)
+	 * Read(.ldap.users.by_uidnumber) -> map
+	 */
+	else if (PC(0) == "users" && PC(1) == "by_uidnumber") {
+	    return users_by_uidnumber;
 	}
 	/**
 	 * get the list of home directories (used for users module)
@@ -749,11 +757,19 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	    return user_items;
 	}
 	/**
-	 * get the map of groups indexed by group names (used for users module)
+	 * get the map of gid's indexed by group names (used for users module)
+	 * DEPRECATED, groups_by_name is empty now
 	 * Read(.ldap.groups.by_name) -> map
 	 */
 	else if (PC(0) == "groups" && PC(1) == "by_name") {
 	    return groups_by_name;
+	}
+	/**
+	 * get the mapping of gid numbers to group names (used for users module)
+	 * Read(.ldap.groups.by_uidnumber) -> map
+	 */
+	else if (PC(0) == "groups" && PC(1) == "by_gidnumber") {
+	    return groups_by_gidnumber;
 	}
 	/**
 	 * get the list of GID's (used for users module)
@@ -1388,7 +1404,6 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    map <string, string > s_grouplists;
 	    // for each group, store users having this group as default:
 	    map <int, YCPMap> more_usersmap;
-//	    map <int, string> s_more_usersmap; - generate from map?
 
 	    // when true, no error message is written when object was not found
 	    bool not_found_ok	= true;
@@ -1412,8 +1427,10 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    // initialize the maps/lists to be filled
 	    users = YCPMap();
 	    users_by_name = YCPMap();
+	    users_by_uidnumber = YCPMap();
 	    groups = YCPMap();
 	    groups_by_name = YCPMap();
+	    groups_by_gidnumber = YCPMap();
 
 	    user_items	= YCPMap();
 	    uids	= YCPMap();
@@ -1464,17 +1481,22 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			}
 			usermap->add (YCPString (udn), YCPInteger (1));
 		    }
-		    // FIXME: should "uniquemember" be replaced with a map,
-		    // or it is better to use some generic name ('userlist')?
 		    group->add (YCPString (member_attribute), usermap);
-//		    group->add (YCPString ("userlist"), usermap);
 		    // change list of users to string (need only for itemlist)
 		    if (itemlists) {
 			group->add (YCPString ("s_userlist"), YCPString(s_ul));
 		    }
 		    group->add (YCPString ("more_users"), YCPMap ());
 		    // ------- finally add new item to return maps
-		    groups->add (YCPInteger (gid), group);
+		    groups->add (YCPString (groupname), group);
+		    if (groups_by_gidnumber->value(YCPInteger(gid)).isNull()) {
+			groups_by_gidnumber->add (YCPInteger (gid), YCPMap ());
+		    }
+		    YCPMap gids_map =
+		       groups_by_gidnumber->value (YCPInteger(gid))->asMap();
+		    gids_map->add (YCPString (groupname), YCPInteger(1));
+		    groups_by_gidnumber->add (YCPInteger (gid), gids_map);
+
 		    groupnames->add (YCPString (groupname), YCPInteger(1));
 		    gids->add (YCPInteger (gid), YCPInteger(1));
 		}
@@ -1530,9 +1552,12 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    // get the name of default group
 		    int gid = getIntValue (user, "gidnumber", -1);
 		    string groupname;
-		    if (!groups->value(YCPInteger(gid)).isNull())
-			groupname = getValue (
-			  groups->value (YCPInteger(gid))->asMap(),"cn");
+		    if (!groups_by_gidnumber->value(YCPInteger(gid)).isNull())
+		    {
+			YCPMap gmap	= 
+			   groups_by_gidnumber->value(YCPInteger(gid))->asMap();
+			groupname = gmap->begin().key()->asString()->value();
+		    }
 		    if (groupname != "")
 			user->add (YCPString("groupname"),YCPString(groupname));
 
@@ -1550,16 +1575,11 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			user->add (YCPString ("grouplist"), YCPMap ());
 		    }
 		    // default group of this user has to know of this user:
-		    /*
-		    if (more_usersmap.find (gid) != more_usersmap.end())
-			more_usersmap [gid] += ",";
-		    more_usersmap [gid] += username;
-		    */
 		    (more_usersmap [gid])->add (YCPString (username), YCPInteger(1));
 		    // generate itemlist
 		    if (itemlists) {
 			YCPTerm item ("item"), id ("id");
-			id->add (YCPInteger (uid));
+			id->add (YCPString (username));
 			item->add (YCPTerm (id));
 			item->add (YCPString (username));
 			item->add (YCPString (getValue (user, "cn")));
@@ -1575,13 +1595,20 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			    all_groups += ",";
 			all_groups += "...";
 			item->add (YCPString (all_groups));
-			user_items->add (YCPInteger (uid), item);
+			user_items->add (YCPString (username), item);
 		    }
 		    
 		    // ------- finally add new item to return maps
-		    users->add (YCPInteger (uid), user);
+		    users->add (YCPString (username), user);
 		    // helper structures for faster searching in users module
-		    users_by_name->add (YCPString (username), YCPInteger (uid));
+		    if (users_by_uidnumber->value(YCPInteger(uid)).isNull()) {
+			users_by_uidnumber->add (YCPInteger (uid), YCPMap ());
+		    }
+		    YCPMap uids_map =
+			users_by_uidnumber->value (YCPInteger(uid))->asMap();
+		    uids_map->add (YCPString (username), YCPInteger(1));
+		    users_by_uidnumber->add (YCPInteger (uid), uids_map);
+
 		    uids->add (YCPInteger (uid), YCPInteger(1));
 		    usernames->add (YCPString (username), YCPInteger(1));
 		    userdns->add (YCPString (dn), YCPInteger(1));
@@ -1602,23 +1629,22 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	      }
 	    }
             }
-
 	    // once again, go through groups and update group maps	    
 	    for (YCPMapIterator i = groups->begin(); i != groups->end(); i++) {
 
 		YCPMap group = i.value()->asMap();
-		int gid = i.key()->asInteger()->value();
-		string groupname = getValue (group, "cn");
-		string more_users; // TODO for itemlist!
+		string groupname = i.key()->asString()->value();
+		int gid = getIntValue (group, "gidnumber", -1);
+		string more_users; // TODO create contents if itemlists
 		if (more_usersmap.find (gid) != more_usersmap.end()) {
 		    group->add (YCPString ("more_users"), more_usersmap[gid]);
-		    // FIXME better to add directly while processing users...
-		    groups->add (YCPInteger (gid), group);
+		    // TODO better to add directly while processing users...
+		    groups->add (YCPString (groupname), group);
 		}
 		// generate itemlist if wanted
 		if (itemlists) {
 		    YCPTerm item ("item"), id ("id");
-		    id->add (YCPInteger (gid));
+		    id->add (YCPString (groupname));
 		    item->add (YCPTerm (id));
 		    item->add (YCPString (groupname));
 		    item->add (addBlanks (gid));
@@ -1635,9 +1661,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 			all_users = all_users.substr (0,
 			    all_users.find_first_of (",", ANSWER)) + ",...";
 		    item->add (YCPString (all_users));
-		    group_items->add (YCPInteger (gid), item);
+		    group_items->add (YCPString (groupname), item);
 		}
-		groups_by_name->add (YCPString (groupname), YCPInteger (gid));
 	    }
 	    return YCPBoolean(true);
 	}
