@@ -1,7 +1,7 @@
 @HEADER-COMMENT@
-# neededforbuild gpp libgpp libxcrypt libxcrypt-devel yast2-devel-packages ldapcpplib-devel ldapcpplib openldap2-devel cyrus-sasl2-devel
 
 @HEADER@
+BuildRequires:	gcc-c++ ldapcpplib-devel libxcrypt-devel yast2-devel-packages
 Summary:	SCR agent for accessing LDAP.
 Requires: 	ldapcpplib yast2
 
