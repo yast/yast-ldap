@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Mon Feb  6 14:21:48 CET 2006 - jsuchome@suse.cz
+
+- reduced BuildRequires
+- 2.13.2
+
+-------------------------------------------------------------------
 Tue Nov 22 11:04:20 CET 2005 - jsuchome@suse.cz
 
 - adapted .users and .groups calls to to index maps names 
