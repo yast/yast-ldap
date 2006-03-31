@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Mar 31 14:52:14 CEST 2006 - jsuchome@suse.cz
+
+- constructor of LDAPConnection object may throw an exception (#159741)
+- 2.13.4 
+
+-------------------------------------------------------------------
 Thu Mar  9 16:49:30 CET 2006 - jsuchome@suse.cz
 
 - BuildRequires: added missing yast2

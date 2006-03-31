@@ -1218,11 +1218,14 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	// TODO how/where to set this?
 	cons = new LDAPConstraints;
 
-	ldap = new LDAPConnection (hostname, port, cons);
-	if (!ldap || !cons)
-	{
+	try {
+	    ldap = new LDAPConnection (hostname, port, cons);
+	}
+	catch (LDAPException e) {
+	    debug_exception (e, "init");
+	    delete ldap;
+	    ldap	= NULL;
 	    y2error ("Error while initializing connection object");
-	    ldap_error = "init";
 	    return YCPBoolean (false);
 	}
 
