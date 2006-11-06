@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Mon Nov  6 10:49:49 CET 2006 - jsuchome@suse.cz
+
+- fixed html documentation header
+- new version for new product
+- 2.14.0
+
+-------------------------------------------------------------------
 Fri Mar 31 14:52:14 CEST 2006 - jsuchome@suse.cz
 
 - constructor of LDAPConnection object may throw an exception (#159741)
