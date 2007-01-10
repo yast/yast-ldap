@@ -150,6 +150,11 @@ private:
      * log the output of an exception and set the return value from agent's call
      */
     void debug_exception (LDAPException e, string action);
+    
+    /**
+     * log the output of Referral Exception
+     */
+    void debug_referral (LDAPReferralException e, string action);
 
     /**
      * creates attributes for new LDAP object and fills their values 

@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Wed Jan 10 13:09:18 CET 2007 - jsuchome@suse.cz
+
+- ask attribute for 'usage' flag (required by F301179)
+- new call for testing password policy support (F301179)
+- better debug for referral exceptions
+- 2.13.5
+
+-------------------------------------------------------------------
 Fri Mar 31 14:52:14 CEST 2006 - jsuchome@suse.cz
 
 - constructor of LDAPConnection object may throw an exception (#159741)

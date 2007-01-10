@@ -484,6 +484,16 @@ void LdapAgent::debug_exception (LDAPException e, string action)
     }
 }
 
+// print the debug information about caught Referral Exception
+void LdapAgent::debug_referral (LDAPReferralException e, string action)
+{
+    const LDAPUrlList urls = e.getUrls ();
+    y2milestone ("caught referral; size of url list: %i", urls.size ());
+    for (LDAPUrlList::const_iterator i=urls.begin(); i!=urls.end(); i++) {
+	y2milestone ("url: %s", i->getURLString ().c_str());
+    }
+}
+
 /**
  * Dir
  */
@@ -610,8 +620,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 			delete entry;
 		    }
 		    catch (LDAPReferralException e) {
-			y2warning ("caught referral.");
-			ldap_error = "referrall"; //TODO what now?
+			debug_referral (e, "going through search result");
 		    }
 		    catch  (LDAPException e) {
 			debug_exception (e, "going through search result");
@@ -699,6 +708,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 		ret->add (YCPString ("oid"), YCPString (at.getOid()));
 		ret->add (YCPString ("desc"), YCPString (at.getDesc()));
 		ret->add (YCPString ("single"), YCPBoolean (at.isSingle()));
+		ret->add (YCPString ("usage"), YCPInteger (at.getUsage()));
 	    }
 	    else {
 		y2error ("No such attributeType: '%s'", name.c_str());
@@ -1262,7 +1272,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	return YCPBoolean (true);
     }
 
-    if (!ldap_initialized && PC(0) != "ping") {
+    if (!ldap_initialized && PC(0) != "ping" && PC(0) != "ppolicy") {
 	y2error ("Ldap not initialized: use Execute(.ldap) first!");
 	ldap_error = "init";
 	return YCPBoolean (false);
@@ -1303,6 +1313,62 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    delete ldap_tmp;
 	    return YCPBoolean(true);
 	}
+	/**
+	 * ppolicy: Execute (.ldap.ppolicy, $["hostname": <host>, "port": <port>, "bind_dn": <dn>] )
+	 * returns true if server suports Password Policy (feature 301179):
+	 *
+	 * rhafer: 'To detect if the server does support LDAP Password Policies you can send it a
+	 * LDAP Bind Request with the Password Policy Control attached and marked as "critical".
+	 * The bind-dn should ether be set to the base-dn of the LDAP Database or a child of it
+	 * (the entry itself does not need to exist in the Database). The bind-pw most not be empty
+	 * (just some random string is fine) 
+	 *  If the server supports Password Policies you'll get back Error Code 49:
+	 *  "Invalid credentials". if it does not support Password Policies you'll get Error Code
+	 *  53: "Server is unwilling to perform" with the additional message:
+	 *  "critical control unavailable in context"'
+	 */
+	if (PC(0) == "ppolicy") {
+
+	    string host_tmp = getValue (argmap, "hostname");
+	    if (host_tmp == "") {
+		y2error ("Missing hostname of LDAPHost, aborting");
+		return YCPBoolean (false);
+	    }
+	    int port_tmp = getIntValue (argmap, "port", DEFAULT_PORT);
+
+	    LDAPConnection *ldap_tmp = new LDAPConnection (host_tmp, port_tmp);
+	    if (!ldap_tmp) {
+		delete ldap_tmp;
+		ldap_error = "init";
+		y2error ("ppolicy: failed to create LDAPConnection object");
+		return YCPBoolean (false);
+	    }
+	    YCPValue ret = YCPBoolean (true);
+	    bind_dn = getValue (argmap, "bind_dn");
+			
+	    // now add critical Password Policy Control
+	    LDAPCtrl ppolicyCtrl ("1.3.6.1.4.1.42.2.27.8.5.1", true);
+	    LDAPControlSet cs;
+	    cs.add (ppolicyCtrl);
+	    LDAPConstraints *cons_tmp	= new LDAPConstraints;
+            cons_tmp->setServerControls (&cs);
+	    try {
+		ldap_tmp->bind (bind_dn, "muhahaha", cons_tmp);
+	    }
+	    catch (LDAPException e) {
+	        int error_code = e.getResultCode();
+		string error = e.getResultMsg();
+		y2debug ("ldap error (%i): %s", error_code, error.c_str());
+		if (e.getServerMsg() != "") {
+		    y2debug ("additional info: %s", e.getServerMsg().c_str());
+		}
+		if (error_code != 49 && error_code != 0)
+		    ret	= YCPBoolean (false);
+	    }
+	    delete ldap_tmp;
+	    delete cons_tmp;
+	    return ret;
+	}	
 	/**
 	 * bind: Execute(.ldap.bind, $[ "bind_dn": binddn, "bindpw": bindpw] )
 	 * for anonymous acess, call bind with empty map
@@ -1507,11 +1573,10 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		delete entry;
 	      }
 	      catch (LDAPReferralException e) {
-		y2warning ("caught referral.");
-		ldap_error = "referrall"; 
+		debug_referral (e, "going through group search result");
 	      }
 	      catch  (LDAPException e) {
-		debug_exception (e, "going through search result");
+		debug_exception (e, "going through group search result");
 	      }
 	    }
             }
@@ -1624,11 +1689,10 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		delete entry;
 	      }
 	      catch (LDAPReferralException e) {
-		y2warning ("caught referral.");
-		ldap_error = "referrall";
+		debug_referral (e, "going through user search result");
 	      }
 	      catch  (LDAPException e) {
-		debug_exception (e, "going through search result");
+		debug_exception (e, "going through user search result");
 	      }
 	    }
             }
