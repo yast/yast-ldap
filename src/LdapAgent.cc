@@ -48,6 +48,7 @@ LdapAgent::LdapAgent() : SCRAgent()
     ldap		= NULL;
     cons		= NULL;
     ldap_initialized	= false;
+    tls_error		= false;
 }
 
 /**
@@ -530,9 +531,11 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	    retmap->add (YCPString ("msg"), YCPString (ldap_error));
 	    retmap->add (YCPString ("server_msg"), YCPString (server_error));
 	    retmap->add (YCPString ("code"), YCPInteger (ldap_error_code));
+	    retmap->add (YCPString ("tls_error"), YCPBoolean (tls_error));
 	    ldap_error = "";
 	    server_error = "";
 	    ldap_error_code = 0;
+	    tls_error	= false;
 	    return retmap;
 	}
 
@@ -1253,6 +1256,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		ldap	= NULL;
 		// return an error if TLS is required
 		if (tls == "yes") {
+		    tls_error	= true;
 		    return YCPBoolean (false);
 		}
 		ldap_error = "";
@@ -1433,6 +1437,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    catch  (LDAPException e) {
 		debug_exception (e, "starting TLS");
+		tls_error	= true;
 		return YCPBoolean (false);
 	    }
 	    return YCPBoolean(true);

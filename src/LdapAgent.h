@@ -40,6 +40,7 @@ private:
     string bind_pw;
     string ldap_error;
     string server_error;
+    bool tls_error;
 
     int ldap_error_code;
     bool ldap_initialized;

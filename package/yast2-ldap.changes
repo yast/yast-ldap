@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Mon Mar  5 16:06:34 CET 2007 - jsuchome@suse.cz
+
+- return information that "starting TLS" failed (#246397)
+- 2.15.1
+
+-------------------------------------------------------------------
 Mon Dec 18 13:16:05 CET 2006 - jsuchome@suse.cz
 
 - ask attribute for 'usage' flag (required by F301179)
