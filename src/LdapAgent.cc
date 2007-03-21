@@ -489,7 +489,7 @@ void LdapAgent::debug_exception (LDAPException e, string action)
 void LdapAgent::debug_referral (LDAPReferralException e, string action)
 {
     const LDAPUrlList urls = e.getUrls ();
-    y2milestone ("caught referral; size of url list: %i", urls.size ());
+    y2milestone ("caught referral; size of url list: %zi", urls.size ());
     for (LDAPUrlList::const_iterator i=urls.begin(); i!=urls.end(); i++) {
 	y2milestone ("url: %s", i->getURLString ().c_str());
     }
