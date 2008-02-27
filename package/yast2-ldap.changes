@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Wed Feb 27 09:36:35 CET 2008 - jsuchome@suse.cz
+
+- search for all attributes (this time pwdaccountlockedtime)
+  before modify action (bnc#364837)
+- 2.16.0
+
+-------------------------------------------------------------------
 Mon Mar  5 16:06:34 CET 2007 - jsuchome@suse.cz
 
 - return information that "starting TLS" failed (#246397)
