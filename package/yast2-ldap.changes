@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Feb 29 13:51:31 CET 2008 - jsuchome@suse.cz
+
+- document Execute (.unbind) agent call 
+
+-------------------------------------------------------------------
 Wed Feb 27 09:36:35 CET 2008 - jsuchome@suse.cz
 
 - search for all attributes (this time pwdaccountlockedtime)
