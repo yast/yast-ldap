@@ -176,7 +176,10 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
     YCPMap ret;
     LDAPSearchResults* entries = NULL;
     try {
-	entries = ldap->search (dn, 0, "objectclass=*", StringList(), true);
+	StringList attrs;
+	attrs.add ("*");
+	attrs.add ("+");
+	entries = ldap->search (dn, 0, "objectclass=*", attrs, true);
     }
     catch  (LDAPException e) {
         debug_exception (e, "searching for attributes (with dn=" + dn + ")");

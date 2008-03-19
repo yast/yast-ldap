@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Tue Feb 26 16:49:30 CET 2008 - jsuchome@suse.cz
+
+- search for all attributes (this time pwdaccountlockedtime)
+  before modify action (bnc#364837)
+- 2.13.6
+
+-------------------------------------------------------------------
 Wed Jan 10 13:09:18 CET 2007 - jsuchome@suse.cz
 
 - ask attribute for 'usage' flag (required by F301179)
