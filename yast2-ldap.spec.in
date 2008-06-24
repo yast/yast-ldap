@@ -1,7 +1,7 @@
 @HEADER-COMMENT@
 
 @HEADER@
-BuildRequires:	gcc-c++ ldapcpplib-devel libxcrypt-devel yast2-devtools doxygen yast2-core-devel yast2
+BuildRequires:	gcc-c++ libldapcpp-devel libxcrypt-devel yast2-devtools doxygen yast2-core-devel yast2
 Summary:	SCR agent for accessing LDAP.
 Requires: 	ldapcpplib yast2
 

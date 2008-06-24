@@ -15,7 +15,7 @@
 
 #include <LDAPConnection.h>
 #include <LDAPException.h>
-#include <LDAPReferralException.h>
+//#include <LDAPReferralException.h>
 #include <LDAPAttributeList.h>
 #include <LDAPAttribute.h>
 
