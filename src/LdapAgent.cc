@@ -162,7 +162,7 @@ YCPMap LdapAgent::getSearchedEntry (LDAPEntry *entry, bool single_values)
 	else
 	    value = YCPList (list);
 
-	ret->add (YCPString (tolower (key)), YCPValue(value));
+	ret->add (YCPString (key), YCPValue(value));
     }
     return ret;
 }
@@ -180,7 +180,7 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 	StringList attrs;
 	attrs.add ("*");
 	attrs.add ("+");
-	entries = ldap->search (dn, 0, "objectclass=*", attrs, true);
+	entries = ldap->search (dn, 0, "objectClass=*", attrs, true);
     }
     catch  (LDAPException e) {
         debug_exception (e, "searching for attributes (with dn=" + dn + ")");
@@ -202,30 +202,31 @@ YCPMap LdapAgent::getObjectAttributes (string dn)
 /**
  * Return YCP of group, given as LDAP object
  * @param entry LDAP object of the group [item of search result]
- * @param member_attribute name of attribute with members ("member"/"uniquemember")
+ * @param member_attribute name of attribute with members ("member"/"uniqueMember")
  */
 YCPMap LdapAgent::getGroupEntry (LDAPEntry *entry, string member_attribute)
 {
     YCPMap ret;	
     const LDAPAttributeList *al= entry->getAttributes();
+    string member_attr	= tolower (member_attribute);
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	string key = tolower (i->getName());
+	string key = i->getName();
 	string userlist;
 	
 	// get the values of current attribute:
 	const StringList sl = i->getValues();
 	YCPList list = stringlist2ycplist (sl);
 	
-	if ((sl.size() > 1 || key == member_attribute) && key != "cn")
+	if ((sl.size() > 1 || tolower (key) == member_attr) && key != "cn")
 	{
 	    value = YCPList (list);
 	}
 	else
 	{
 	    string val = *(sl.begin());
-	    if ( key == "gidnumber" )
+	    if ( tolower (key) == "gidnumber" )
 		value = YCPInteger (atoi (val.c_str()));
 	    else
 		value = YCPString (val);
@@ -251,7 +252,7 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     // go through attributes of current entry
     for (LDAPAttributeList::const_iterator i=al->begin(); i!=al->end(); i++) {
 	YCPValue value = YCPString ("");
-	string key = tolower (i->getName());
+	string key = i->getName();
 	string userlist;
 	
 	// get the values of current attribute:
@@ -270,13 +271,13 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
 	    ber_bvecfree(val);
 	}
 	// list of strings
-	else if (sl.size() > 1 && key != "uid") {
+	else if (sl.size() > 1 && tolower (key) != "uid") {
 	    value = YCPList (list);
 	}
 	// string or integer
 	else {
 	    string val = *(sl.begin());
-	    if ( key == "gidnumber" || key == "uidnumber")
+	    if ( tolower (key) == "gidnumber" || tolower (key) == "uidnumber")
 		value = YCPInteger (atoi (val.c_str()));
 	    else
 		value = YCPString (val);
@@ -286,8 +287,8 @@ YCPMap LdapAgent::getUserEntry (LDAPEntry *entry)
     
     // for the need of yast2-users
     ret->add (YCPString ("type"), YCPString ("ldap"));
-    if (ret->value (YCPString("userpassword")).isNull()) {
-	ret->add (YCPString ("userpassword"), YCPString ("x"));
+    if (ret->value (YCPString("userPassword")).isNull()) {
+	ret->add (YCPString ("userPassword"), YCPString ("x"));
     }
     return ret;
 }
@@ -551,7 +552,7 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 	    string base_dn	= getValue (argmap, "base_dn");
 	    string filter	= getValue (argmap, "filter");
 	    if (filter == "") {
-		filter = "objectclass=*";
+		filter = "objectClass=*";
 	    }
 	    int scope		= getIntValue (argmap, "scope", 0);
 	    bool attrsOnly	= getBoolValue (argmap, "attrsOnly");
@@ -680,9 +681,9 @@ YCPValue LdapAgent::Read(const YCPPath &path, const YCPValue& arg, const YCPValu
 		ret->add (YCPString ("kind"), YCPInteger (oc.getKind()));
 		ret->add (YCPString ("oid"), YCPString (oc.getOid()));
 		ret->add (YCPString ("desc"), YCPString (oc.getDesc()));
-		ret->add (YCPString ("must"), stringlist2ycplist_low (oc.getMust()));
-		ret->add (YCPString ("may"), stringlist2ycplist_low (oc.getMay()));
-		ret->add (YCPString ("sup"), stringlist2ycplist_low (oc.getSup()));
+		ret->add (YCPString ("must"), stringlist2ycplist(oc.getMust()));
+		ret->add (YCPString ("may"), stringlist2ycplist (oc.getMay()));
+		ret->add (YCPString ("sup"), stringlist2ycplist (oc.getSup()));
 	    }
 	    else {
 		y2error ("No such objectclass: '%s'", name.c_str());
@@ -860,7 +861,7 @@ YCPBoolean LdapAgent::deleteSubTree (string dn) {
         try {
 	    // search for object children
             res = ldap->search (dn, LDAPConnection::SEARCH_ONE,
-                    "objectclass=*", attrs, true);
+                    "objectClass=*", attrs, true);
             if (!(entry = res->getNext())) {
                 delete entry;
                 entry=0;
@@ -976,7 +977,7 @@ YCPBoolean LdapAgent::moveWithSubtree (string dn, string new_dn, string parent_d
     LDAPSearchResults* entries 	= NULL;
     try {
 	// search for object children
-        entries = ldap->search (dn, 1, "objectclass=*");
+        entries = ldap->search (dn, 1, "objectClass=*");
 	LDAPEntry* entry;
 	entry	= 0;
 	if (entries != 0)
@@ -1413,7 +1414,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    sl.add ("attributetypes");
 	    LDAPSearchResults* entries = NULL;
 	    try {
-		entries = ldap->search (schema_dn, 0, "objectclass=*", sl);
+		entries = ldap->search (schema_dn, 0, "objectClass=*", sl);
 	    }
 	    catch  (LDAPException e) {
 		debug_exception (e, "searching for " + schema_dn);
@@ -1465,7 +1466,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    string member_attribute	=
 		getValue (argmap, "member_attribute");
 	    if (member_attribute == "")
-		member_attribute	= "uniquemember";
+		member_attribute	= "uniqueMember";
 
 	    int user_scope	= getIntValue (argmap, "user_scope", 2);
 	    int group_scope	= getIntValue (argmap, "group_scope", 2);
@@ -1529,9 +1530,9 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		if (entry != 0) {
 		    YCPMap group = getGroupEntry (entry, member_attribute);
 		    group->add (YCPString("dn"), YCPString(entry->getDN()));
-		    int gid = getIntValue (group, "gidnumber", -1);
+		    int gid = getIntValue (group, "gidNumber", -1);
 		    if (gid == -1) {
-			y2warning("Group '%s' has no gidnumber?",
+			y2warning("Group '%s' has no gidNumber?",
 			    entry->getDN().c_str());
 			continue;
 		    }
@@ -1619,14 +1620,14 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    string dn = entry->getDN();
 		    user->add (YCPString("dn"), YCPString(dn));
 		    // check it
-		    int uid = getIntValue (user, "uidnumber", -1);
+		    int uid = getIntValue (user, "uidNumber", -1);
 		    if (uid == -1) {
-			y2warning("User with dn '%s' has no uidnumber?",
+			y2warning("User with dn '%s' has no uidNumber?",
 			    dn.c_str());
 			continue;
 		    }
 		    // get the name of default group
-		    int gid = getIntValue (user, "gidnumber", -1);
+		    int gid = getIntValue (user, "gidNumber", -1);
 		    string groupname;
 		    if (!groups_by_gidnumber->value(YCPInteger(gid)).isNull())
 		    {
@@ -1688,7 +1689,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 		    uids->add (YCPInteger (uid), YCPInteger(1));
 		    usernames->add (YCPString (username), YCPInteger(1));
 		    userdns->add (YCPString (dn), YCPInteger(1));
-		    string home = getValue (user,"homedirectory");
+		    string home = getValue (user,"homeDirectory");
 		    if (home != "") {
 			homes->add (YCPString (home), YCPInteger(1));
 		    }
@@ -1709,7 +1710,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 
 		YCPMap group = i.value()->asMap();
 		string groupname = i.key()->asString()->value();
-		int gid = getIntValue (group, "gidnumber", -1);
+		int gid = getIntValue (group, "gidNumber", -1);
 		string more_users; // TODO create contents if itemlists
 		if (more_usersmap.find (gid) != more_usersmap.end()) {
 		    group->add (YCPString ("more_users"), more_usersmap[gid]);
