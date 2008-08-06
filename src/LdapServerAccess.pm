@@ -70,8 +70,14 @@ sub AddLdapSchemas {
     }
 
     require YaPI::LdapServer;
+    if ( ! YaPI::LdapServer->Init() )
+    {
+	y2error ("Initialzing LDAP Server YaPI failed");
+	return undef;
+    }
+
     my $schema_added = 0;
-    my $schemas_ref = YaPI::LdapServer->ReadSchemaIncludeList ();
+    my $schemas_ref = YaPI::LdapServer->ReadSchemaList ();
     if (! defined ($schemas_ref) || ref ($schemas_ref) ne "ARRAY")
     {
 	y2error ("Retrieving current LDAP schemas failed");
@@ -79,27 +85,23 @@ sub AddLdapSchemas {
     }
     my @schemas = @{$schemas_ref};
     foreach my $schema (@new_schemas) {
-	my @current_schema = grep /$schema/, @schemas;
+        $schema =~ /^.*\/(.*)\.(schema|ldif)$/;
+        my $schema_base = $1;
+        y2milestone("Schemabase: $schema_base");
+	my @current_schema = grep /$schema_base/, @schemas;
 	if (0 == scalar (@current_schema))
 	{
 	    y2milestone ("Including schema $schema");
-	    push @schemas, $schema;
-	    $schema_added = 1;
+	    if (! YaPI::LdapServer->AddSchema( $schema) ) {
+	        return undef;
+            }
 	}
 	else
 	{
 	    y2milestone ("Schema $schema is already included");
 	}
     }
-    if ($schema_added) {
-	if (! YaPI::LdapServer->WriteSchemaIncludeList (\@schemas)) {
-	    return undef;
-	}
-	if ($restart) {
-	    YaPI::LdapServer->SwitchService (1);
-	}
-    }
-    return Boolean ($schema_added);
+    return Boolean(1);
 }
 
 # Add new index to ldap server database
@@ -131,7 +133,7 @@ sub AddIndex {
     }
 
     my $attr		= $new_index->{"attr"};
-    my $param		= $new_index->{"param"};
+    my @param		= split(/,/, $new_index->{"param"});
 
     if (! $self->InstallLdapServer ()) {
 	y2error ("Cannot install $package_name, not checking LDAP schemas");
@@ -139,32 +141,67 @@ sub AddIndex {
     }
 
     require YaPI::LdapServer;
+    if ( ! YaPI::LdapServer->Init() )
+    {
+	y2error ("Initialzing LDAP Server YaPI failed");
+	return undef;
+    }
     my $indices		= YaPI::LdapServer->ReadIndex ($suffix);
-    if (defined $indices && ref ($indices) eq "ARRAY") {
-	    
-	foreach my $index (@$indices) {
-	    my $attrs	= $index->{"attr"} || "";
-	    my $params	= $index->{"param"} || "";
+    my $index_mod       = { "name" => $attr };
+    if (defined $indices && ref ($indices) eq "HASH") {
 
-	    my @current_attrs	= grep /^$attr$/, split (/,/, $attrs);
-	    my @current_params	= grep /^$param$/, split (/,/, $param);
-
-	    if (scalar (@current_attrs) >0 && scalar (@current_params) > 0) {
+        if ( defined $indices->{$attr} )
+        {
+            
+            if ( ( grep /^eq$/, @param ) || ( $indices->{$attr}->{'eq'} ) )
+            {
+                $index_mod->{'eq'} = 1;
+            }
+            if ( ( grep /^sub$/, @param ) || ( $indices->{$attr}->{'sub'} ) )
+            {
+                $index_mod->{'pres'} = 1;
+            }
+            if ( ( grep /^pres$/, @param ) || ( $indices->{$attr}->{'pres'} ) )
+            {
+                $index_mod->{'pres'} = 1;
+            }
+            if ( ( $index_mod->{'pres'} == $indices->{$attr}->{'pres'} ) &&
+                 ( $index_mod->{'sub'} == $indices->{$attr}->{'sub'} ) &&
+                 ( $index_mod->{'eq'} == $indices->{$attr}->{'eq'} ) )
+            {
 		y2milestone ("index for $attr already present");
-		$present	= 1;
-	    }
-	}
+                $present = 1;
+            }
+        }
+        else
+        {
+            if ( grep /^eq$/, @param )
+            {
+                $index_mod->{'eq'} = 1;
+            }
+            if ( grep /^sub$/, @param )
+            {
+                $index_mod->{'pres'} = 1;
+            }
+            if ( grep /^pres$/, @param )
+            {
+                $index_mod->{'pres'} = 1;
+            }
+            $present = 0;
+        }
+        
 	
 	if (! $present) {
 	    y2milestone ("$attr index missing, adding");
-	    if (!YaPI::LdapServer->AddIndex ($suffix, $new_index)) {
+	    if (!YaPI::LdapServer->EditIndex ($suffix, $index_mod)) {
 		return undef;
 	    }
 	    if ($restart) {
-		YaPI::LdapServer->SwitchService(1);
+                # No restart needed anymore
+		# YaPI::LdapServer->SwitchService(1);
 	    }
 	}
-	return Boolean (!$present);
+	return Boolean(1);
     }
     return undef;
 }
