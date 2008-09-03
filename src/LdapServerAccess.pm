@@ -147,24 +147,42 @@ sub AddIndex {
 	return undef;
     }
     my $indices		= YaPI::LdapServer->ReadIndex ($suffix);
-    my $index_mod       = { "name" => $attr };
+    my $index_mod       = { "name" => $attr,
+                            "eq"   => 0,
+                            "sub"  => 0,
+                            "pres" => 0
+                          };
+
     if (defined $indices && ref ($indices) eq "HASH") {
 
         if ( defined $indices->{$attr} )
         {
-            
+            if (! defined $indices->{$attr}->{'eq'} )
+            {
+                 $indices->{$attr}->{'eq'} = 0;
+            }
+            if (! defined $indices->{$attr}->{'sub'} )
+            {
+                 $indices->{$attr}->{'sub'} = 0;
+            }
+            if (! defined $indices->{$attr}->{'pres'} )
+            {
+                 $indices->{$attr}->{'pres'} = 0;
+            }
+
             if ( ( grep /^eq$/, @param ) || ( $indices->{$attr}->{'eq'} ) )
             {
                 $index_mod->{'eq'} = 1;
             }
             if ( ( grep /^sub$/, @param ) || ( $indices->{$attr}->{'sub'} ) )
             {
-                $index_mod->{'pres'} = 1;
+                $index_mod->{'sub'} = 1;
             }
             if ( ( grep /^pres$/, @param ) || ( $indices->{$attr}->{'pres'} ) )
             {
                 $index_mod->{'pres'} = 1;
             }
+
             if ( ( $index_mod->{'pres'} == $indices->{$attr}->{'pres'} ) &&
                  ( $index_mod->{'sub'} == $indices->{$attr}->{'sub'} ) &&
                  ( $index_mod->{'eq'} == $indices->{$attr}->{'eq'} ) )
@@ -181,7 +199,7 @@ sub AddIndex {
             }
             if ( grep /^sub$/, @param )
             {
-                $index_mod->{'pres'} = 1;
+                $index_mod->{'sub'} = 1;
             }
             if ( grep /^pres$/, @param )
             {
@@ -196,10 +214,6 @@ sub AddIndex {
 	    if (!YaPI::LdapServer->EditIndex ($suffix, $index_mod)) {
 		return undef;
 	    }
-	    if ($restart) {
-                # No restart needed anymore
-		# YaPI::LdapServer->SwitchService(1);
-	    }
 	}
 	return Boolean(1);
     }
@@ -207,18 +221,19 @@ sub AddIndex {
 }
 
 # adapt LDAP server ACL: allow administrator access, but deny everyone else
-# 1. param: administrator's DN
-# 2. param: restart LDAP server?
+# 1. param: DN which should have write access
+# 2. param: base DN of the database
 # return value: was anyting modified? (boolean) or undef on error
 BEGIN {$TYPEINFO{AddSambaACLHack} = ["function",
     "boolean",
     "string", "boolean"]
 }
-sub AddSambaACLHack {
+
+sub AddSambaACL {
 
     my $self		= shift;
     my $dn		= shift;
-    my $restart		= shift;
+    my $suffix		= shift;
 
     if (Mode->config ()) {
 	return Boolean (1);
@@ -230,14 +245,54 @@ sub AddSambaACLHack {
     }
 
     require YaPI::LdapServer;
+    my $aclList = YaPI::LdapServer->ReadAcl($suffix);
+    
+    #
+    # Check if there are already acl in place for the samba attributes
+    # 
+    foreach my $acl (@{$aclList})
+    {
+        if ( defined ( $acl->{'target'}->{'attrs'} ) )
+        {
+            my @attr = split /,/, $acl->{'target'}->{'attrs'};
+            if ( ( grep { lc($_) eq "sambalmpassword" } @attr ) ||
+                 ( grep { lc($_) eq "sambantpassword" } @attr ) )
+            {
+                y2milestone("Samba ACLs already present");
+                return Boolean(0);
+            }
+        }
+    }
 
-    if (!SCR->Write (".ldapserver.sambaACLHack", $dn)) {
+    my @newAcl = (
+            {
+                'target' => {
+                        'attrs' => 'sambaLMPassword,sambaNTPassword',
+                        'dn' => {
+                                'style' => 'subtree',
+                                'value' => $suffix
+                            }
+                    },
+                'access' => [
+                        {
+                            'level' => 'write',
+                            'type' => 'dn.base',
+                            'value' => $dn
+                        },
+                        {
+                            'level' => 'none',
+                            'type' => '*',
+                        },
+                    ]
+            }
+        );
+    push @newAcl,(@$aclList);
+
+    if ( ! YaPI::LdapServer->WriteAcl($suffix, \@newAcl ) )
+    {
 	return undef;
     }
-    if ($restart) {
-	YaPI::LdapServer->SwitchService(1);
-    }
-    return Boolean (1);
+    return Boolean(1);
 }
 
 42;
