@@ -1,13 +1,5 @@
 #
-# Makefile.am for .../agent-ldap/doc/autodocs
+# Makefile.am for .../ldap/doc/autodocs
 #
 
-htmldir = $(docdir)/autodocs
-
-html_DATA = index.html $(wildcard *.html *.png) doxygen.css @RPMNAME@.tag
-CLEANFILES = $(html_DATA) doxygen.log doxygen.conf installdox
-
-doxygen.css @RPMNAME@.tag: index.html
-
-index.html: $(srcdir)/../../src/*.h
-	${YDOXYGEN} PROJECT_NAME=@RPMNAME@
+include $(top_srcdir)/autodocs-cc.ami

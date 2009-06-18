@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Thu Jun 18 15:07:37 CEST 2009 - mvidner@suse.cz
+
+- Using autodocs-cc.ami, which contains a fix for automake 1.11.
+
+-------------------------------------------------------------------
 Wed Sep  3 14:34:14 CEST 2008 - jsuchome@suse.cz
 
 - LdapServerAccess.pm: adapted to new LdapServer API
