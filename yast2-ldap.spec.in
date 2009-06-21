@@ -6,7 +6,9 @@ Summary:	YaST2 - LDAP Agent
 Requires: 	ldapcpplib yast2
 
 %description
--
+This agent is used by various YaST2 modules to work with LDAP. It
+enables searching the LDAP tree and adding/deleting/modifying items on
+an LDAP server.
 
 @PREP@
 
