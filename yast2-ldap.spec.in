@@ -1,6 +1,7 @@
 @HEADER-COMMENT@
 
 @HEADER@
+Group:	System/YaST
 License: GPL v2 or later
 BuildRequires:	gcc-c++ libldapcpp-devel libxcrypt-devel yast2-devtools doxygen yast2-core-devel yast2
 Summary:	YaST2 - LDAP Agent
