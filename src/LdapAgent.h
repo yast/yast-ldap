@@ -157,6 +157,11 @@ private:
     void debug_referral (LDAPReferralException e, string action);
 
     /**
+     * Adapt TLS Settings of existing LDAP connection
+    */
+    void set_tls_options (YCPMap args, string tls);
+
+    /**
      * creates attributes for new LDAP object and fills their values 
      */
     void generate_attr_list (LDAPAttributeList* attrs, YCPMap map);

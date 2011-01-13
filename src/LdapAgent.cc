@@ -500,6 +500,33 @@ void LdapAgent::debug_referral (LDAPReferralException e, string action)
 }
 
 /**
+ *  Adapt TLS Settings of existing LDAP connection
+ *  args is argument map got from YCP call
+ *  tls is string, values are "yes" and "try"
+ */
+void LdapAgent::set_tls_options (YCPMap args, string set_tls)
+{
+    string cacertfile	= getValue (args, "cacertfile");
+    string cacertdir	= getValue (args, "cacertdir");
+
+    TlsOptions tls = ldap->getTlsOptions();
+    if (cacertfile != "") {
+	tls.setOption (TlsOptions::CACERTFILE, cacertfile);
+    }
+    if (cacertdir != "") {
+	tls.setOption (TlsOptions::CACERTDIR, cacertdir);
+    }
+
+    if (set_tls == "yes") {
+	tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::DEMAND);
+    }
+    if (set_tls == "try") {
+	tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::TRY);
+    }
+}
+
+
+/**
  * Dir
  */
 YCPList LdapAgent::Dir(const YCPPath& path)
@@ -1248,6 +1275,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 
 	// start TLS if proper parameter is given
 	string tls	= getValue (argmap, "use_tls");
+	set_tls_options (argmap, tls);
 
 	if (tls == "try" || tls == "yes") {
 	    try {
@@ -1436,6 +1464,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	}
 	else if (PC(0) == "start_tls") {
 	    
+	    set_tls_options (argmap, "yes");
 	    try {
 		ldap->start_tls ();
 	    }
@@ -1446,6 +1475,7 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	    }
 	    return YCPBoolean(true);
 	}
+
 	else {
 	   y2error("Wrong path '%s' in Execute().", path->toString().c_str());
 	}
