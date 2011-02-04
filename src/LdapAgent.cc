@@ -1257,7 +1257,6 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	}
 
  	port = getIntValue (argmap, "port", DEFAULT_PORT);
- 	// int version = getIntValue (argmap, "version", 3); TODO
 
 	// TODO how/where to set this?
 	cons = new LDAPConstraints;
@@ -1428,6 +1427,16 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	 */
 	else if (PC(0) == "unbind") {
 	    ldap->unbind();
+	    return YCPBoolean(true);
+	}
+	/** 
+	 * close the connection, delete object
+	 */
+	else if (PC(0) == "close") {
+	    ldap->unbind();
+	    delete ldap;
+	    ldap		= NULL;
+	    ldap_initialized	= false;
 	    return YCPBoolean(true);
 	}
 	/**

@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Feb  4 13:57:47 CET 2011 - jsuchome@suse.cz
+
+- added command to close the connection
+- 2.20.1
+
+-------------------------------------------------------------------
 Thu Jan 13 09:33:46 CET 2011 - jsuchome@suse.cz
 
 - added support for setting TLS options
