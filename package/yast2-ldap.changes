@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Fri Mar 18 08:25:57 CET 2011 - jsuchome@suse.cz
+
+- added support for setting TLS options
+- added command to close the connection
+- 2.17.4 
+
+-------------------------------------------------------------------
 Wed Sep  3 14:34:14 CEST 2008 - jsuchome@suse.cz
 
 - LdapServerAccess.pm: adapted to new LdapServer API
