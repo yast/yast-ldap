@@ -509,7 +509,7 @@ void LdapAgent::set_tls_options (YCPMap args, string set_tls)
     string cacertfile	= getValue (args, "cacertfile");
     string cacertdir	= getValue (args, "cacertdir");
 
-    TlsOptions tls = ldap->getTlsOptions();
+    TlsOptions tls;
     if (cacertfile != "") {
 	tls.setOption (TlsOptions::CACERTFILE, cacertfile);
     }
