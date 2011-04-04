@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Mon Apr  4 10:04:36 CEST 2011 - jsuchome@suse.cz
+
+- use the global TLS Options if present (bnc#684395)
+- 2.21.0
+
+-------------------------------------------------------------------
 Fri Feb  4 13:57:47 CET 2011 - jsuchome@suse.cz
 
 - added command to close the connection
@@ -24,7 +30,6 @@ Wed Sep  3 14:34:14 CEST 2008 - jsuchome@suse.cz
 
 -------------------------------------------------------------------
 Wed Aug  6 11:36:43 CEST 2008 - jsuchome@suse.cz
-
 - adapted LdapServerAccess to new API of yast2-ldap-server (rhafer)
 - 2.17.2 
 
