@@ -1250,6 +1250,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
      */
     if (path->length() == 0) {
 
+	ldap_initialized = false;
+
 	hostname = getValue (argmap, "hostname");
 	if (hostname =="") {
 	    y2error ("Missing hostname of LDAPHost, aborting");

@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Aug 31 15:55:42 CEST 2011 - jsuchome@suse.cz
+
+- properly initialize value of ldap_initialized (bnc#715240)
+- 2.17.6 
+
+-------------------------------------------------------------------
 Mon Apr  4 10:22:09 CEST 2011 - jsuchome@suse.cz
 
 - use the global TLS Options if present (bnc#684395)
