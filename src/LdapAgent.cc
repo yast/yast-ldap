@@ -528,6 +528,7 @@ void LdapAgent::set_tls_options (YCPMap args, string set_tls)
 {
     string cacertfile	= getValue (args, "cacertfile");
     string cacertdir	= getValue (args, "cacertdir");
+    string require      = getValue (args, "require_cert");
 
     TlsOptions tls;
     if (cacertfile != "") {
@@ -538,7 +539,12 @@ void LdapAgent::set_tls_options (YCPMap args, string set_tls)
     }
 
     if (set_tls == "yes") {
-	tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::DEMAND);
+        if (require == "never") {
+	  tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::NEVER);
+        }
+        else {
+	  tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::DEMAND);
+        }
     }
     if (set_tls == "try") {
 	tls.setOption (TlsOptions::REQUIRE_CERT, TlsOptions::TRY);
