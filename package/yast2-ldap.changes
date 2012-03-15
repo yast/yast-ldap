@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Feb 16 15:50:48 CET 2012 - jsuchome@suse.cz
+
+- added option to disable certificate checks (bnc#745877)
+- 2.17.7 
+
+-------------------------------------------------------------------
 Wed Aug 31 15:55:42 CEST 2011 - jsuchome@suse.cz
 
 - properly initialize value of ldap_initialized (bnc#715240)
