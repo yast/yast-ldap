@@ -1282,7 +1282,15 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 
 	// start TLS if proper parameter is given
 	string tls	= getValue (argmap, "use_tls");
-	set_tls_options (argmap, tls);
+        try {
+            set_tls_options (argmap, tls);
+        }
+        catch  (LDAPException e) {
+            debug_exception (e, "setting TLS options");
+            delete ldap;
+            ldap = NULL;
+            return YCPBoolean (false);
+        }
 
 	if (tls == "try" || tls == "yes") {
 	    try {
@@ -1481,8 +1489,8 @@ YCPValue LdapAgent::Execute(const YCPPath &path, const YCPValue& arg,
 	}
 	else if (PC(0) == "start_tls") {
 	    
-	    set_tls_options (argmap, "yes");
 	    try {
+		set_tls_options (argmap, "yes");
 		ldap->start_tls ();
 	    }
 	    catch  (LDAPException e) {

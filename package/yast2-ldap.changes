@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Feb  1 10:35:05 CET 2013 - jsuchome@suse.cz
+
+- catch the possible exception from TLS options calls (bnc#801065)
+- 2.17.8 
+
+-------------------------------------------------------------------
 Thu Feb 16 15:50:48 CET 2012 - jsuchome@suse.cz
 
 - added option to disable certificate checks (bnc#745877)
