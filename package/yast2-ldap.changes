@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Feb  1 09:52:08 CET 2013 - jsuchome@suse.cz
+
+- catch the possible exception from TLS options calls (bnc#801065)
+- 2.23.0
+
+-------------------------------------------------------------------
 Mon Mar 26 10:57:36 CEST 2012 - jsuchome@suse.cz
 
 - removed libxcrypt-devel from buildrequires
