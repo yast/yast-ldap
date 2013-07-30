@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Tue Jul 30 08:28:56 UTC 2013 - yast-devel@opensuse.org
+
+- version 3.0.0
+
+-------------------------------------------------------------------
 Fri Feb  1 09:52:08 CET 2013 - jsuchome@suse.cz
 
 - catch the possible exception from TLS options calls (bnc#801065)
