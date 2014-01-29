@@ -17,7 +17,7 @@
 
 
 Name:           yast2-ldap
-Version:        3.1.0
+Version:        3.1.1
 Release:        0
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -26,7 +26,7 @@ Source0:        %{name}-%{version}.tar.bz2
 Group:          System/YaST
 License:        GPL-2.0
 BuildRequires:	gcc-c++ libldapcpp-devel doxygen yast2-core-devel yast2 libtool
-BuildRequires:  yast2-devtools >= 3.0.6
+BuildRequires:  yast2-devtools >= 3.1.10
 Summary:	YaST2 - LDAP Agent
 Requires: 	ldapcpplib yast2
 
