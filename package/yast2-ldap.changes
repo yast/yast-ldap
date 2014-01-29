@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Wed Jan 29 12:15:31 UTC 2014 - varkoly@suse.com
+
+- Include modules from yast2-ldap-client
+
+-------------------------------------------------------------------
 Thu Sep 19 06:52:05 UTC 2013 - lslezak@suse.cz
 
 - do not use *.spec.in template, use *.spec file with RPM macros

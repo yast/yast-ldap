@@ -48,6 +48,7 @@ an LDAP server.
 %files
 %defattr(-,root,root)
 %{yast_moduledir}/*
+%{yast_clientdir}/*
 %{yast_scrconfdir}/*.scr
 %{yast_plugindir}/libpy2ag_ldap.so.*
 %{yast_plugindir}/libpy2ag_ldap.so
