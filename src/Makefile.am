@@ -25,7 +25,11 @@ INCLUDES = -I$(includedir)
 # ----------- temporary handle also perl/ycp files:
 
 module_DATA =		\
-    LdapServerAccess.pm
+  LdapServerAccess.pm \
+  LdapPopup.rb  Ldap.rb
 
-EXTRA_DIST = $(module_DATA)
+client_DATA = \
+  ldap_browser.rb 
+
+EXTRA_DIST = $(module_DATA) $(client_DATA)
 

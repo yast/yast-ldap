@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Wed Jan 29 12:15:31 UTC 2014 - varkoly@suse.com
+
+- Include modules from yast2-ldap-client
+
+-------------------------------------------------------------------
 Wed Nov 13 15:56:18 UTC 2013 - jreidinger@suse.com
 
 - Add explicit COPYING file
