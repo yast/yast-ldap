@@ -62,8 +62,6 @@ module Yast
       @base_config_dn = ""
 
 
-      Yast.include self, "ldap/routines.rb"
-
       # Required packages for this module to operate
       # -- they are now required only when LDAP is set for authentication
       @required_packages = []
@@ -3093,6 +3091,50 @@ module Yast
       @restart_sshd = restart
 
       nil
+    end
+
+    # Get RDN (relative distinguished name) from dn
+    def get_rdn(dn)
+      dn_list = Builtins.splitstring(dn, ",")
+      Ops.get_string(dn_list, 0, dn)
+    end
+
+    # Get first value from dn (don't have to be "cn")
+    def get_cn(dn)
+      rdn = get_rdn(dn)
+      Builtins.issubstring(rdn, "=") ?
+        Builtins.substring(rdn, Ops.add(Builtins.search(rdn, "="), 1)) :
+        rdn
+    end
+
+    # Create DN from cn by adding base config DN
+    # (Can't work in general cases!)
+    def get_dn(cn)
+      Builtins.sformat("cn=%1,%2", cn, Ldap.base_config_dn)
+    end
+
+    # Create new DN from DN by changing leading cn value
+    # (Can't work in general cases!)
+    def get_new_dn(cn, dn)
+      Builtins.tolower(
+        Builtins.sformat(
+          "cn=%1%2",
+          cn,
+          Builtins.issubstring(dn, ",") ?
+            Builtins.substring(dn, Builtins.search(dn, ",")) :
+            ""
+        )
+      )
+    end
+
+    # Get string value of attribute from map.
+    # (Generaly, it is supposed to be list or string.)
+    def get_string(object, attr)
+      object = deep_copy(object)
+      if Ops.is_list?(Ops.get(object, attr))
+        return Ops.get_string(object, [attr, 0], "")
+      end
+      Ops.get_string(object, attr, "")
     end
 
     publish :variable => :use_gui, :type => "boolean"
