@@ -29,6 +29,7 @@ BuildRequires:	gcc-c++ libldapcpp-devel doxygen yast2-core-devel yast2 libtool y
 BuildRequires:  yast2-devtools >= 3.1.10
 Summary:	YaST2 - LDAP Agent
 Requires: 	ldapcpplib yast2
+Conflicts:      yast2-ldap-client < 3.1.5
 
 %description
 This agent is used by various YaST2 modules to work with LDAP. It
