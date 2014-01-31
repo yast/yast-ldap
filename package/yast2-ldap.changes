@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Fri Jan 31 09:46:34 UTC 2014 - varkoly@suse.com
+
+- Increase version to mark that this package provides the
+  yast2-ldap-client functionality for other yast modules 
+
+-------------------------------------------------------------------
 Wed Jan 29 12:15:31 UTC 2014 - varkoly@suse.com
 
 - Include modules from yast2-ldap-client
