@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Fri Jan 31 11:53:35 UTC 2014 - varkoly@suse.com
+
+- Add yast2-network is needed by Ldap.rb
+
+-------------------------------------------------------------------
 Fri Jan 31 09:46:34 UTC 2014 - varkoly@suse.com
 
 - Increase version to mark that this package provides the
