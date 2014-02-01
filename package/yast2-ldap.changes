@@ -1,7 +1,7 @@
 -------------------------------------------------------------------
 Fri Jan 31 23:59:03 UTC 2014 - varkoly@suse.com
 
-- Include included routines from routines.rb int Ldap.rb
+- Include routines from routines.rb into Ldap.rb
 - 3.1.3 
 
 -------------------------------------------------------------------
