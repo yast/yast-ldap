@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Feb  4 14:55:42 UTC 2014 - jreidinger@suse.com
+
+- properly conflict with old yast2-ldap-client
+- 3.1.5
+
+-------------------------------------------------------------------
 Fri Jan 31 11:53:35 UTC 2014 - varkoly@suse.com
 
 - Add yast2-network is needed by Ldap.rb
