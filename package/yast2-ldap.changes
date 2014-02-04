@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Feb  4 14:55:42 UTC 2014 - jreidinger@suse.com
+
+- properly conflict with old yast2-ldap-client
+- 3.1.4
+
+-------------------------------------------------------------------
 Fri Jan 31 23:59:03 UTC 2014 - varkoly@suse.com
 
 - Include routines from routines.rb into Ldap.rb
