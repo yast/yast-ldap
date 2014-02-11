@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Feb 11 16:33:18 UTC 2014 - jreidinger@suse.com
+
+- add missing sysconfig ldap agent
+- 3.1.5
+
+-------------------------------------------------------------------
 Tue Feb  4 14:55:42 UTC 2014 - jreidinger@suse.com
 
 - properly conflict with old yast2-ldap-client
