@@ -96,7 +96,7 @@ module Yast
       Ldap.Read
 
       @configurations = []
-      @configurations_file = Ops.add(Directory.vardir, "/ldap_servers.ycp")
+      @configurations_file.push("/ldap_servers.ycp")
       # combobox item
       @default_name = _("Current LDAP Client settings")
       @configuration = {
@@ -143,15 +143,13 @@ module Yast
             InputField(
               Id("server"),
               Opt(:hstretch, :notify),
-              _("LDAP Server"),
-              Ops.get_string(@configuration, "server", "")
+              _("LDAP Server"),@configuration["server"]
             ),
             InputField(
               Id("bind_dn"),
               Opt(:hstretch, :notify),
               # textentry label
-              _("Administrator DN"),
-              Ops.get_string(@configuration, "bind_dn", "")
+              _("Administrator DN"),@configuration["bind_dn"]
             ),
             # password entering label
             Password(Id("pw"), Opt(:hstretch), _("&LDAP Server Password")),
@@ -161,8 +159,7 @@ module Yast
               CheckBox(
                 Id("ldap_tls"),
                 Opt(:notify),
-                _("L&DAP TLS"),
-                Ops.get_boolean(@configuration, "ldap_tls", false)
+                _("L&DAP TLS"),@configuration["ldap_tls"]
               )
             ),
             ButtonBox(
