@@ -17,7 +17,7 @@
 
 
 Name:           yast2-ldap
-Version:        3.1.5
+Version:        3.1.6
 Release:        0
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -30,6 +30,7 @@ BuildRequires:  yast2-devtools >= 3.1.10
 Summary:	YaST2 - LDAP Agent
 Requires: 	ldapcpplib yast2 yast2-network
 Conflicts:	yast2-ldap-client < 3.1.5
+Conflicts:      yast2-auth-client < 3.1.6
 
 %description
 This agent is used by various YaST2 modules to work with LDAP. It

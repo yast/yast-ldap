@@ -19,11 +19,12 @@
 # current contact information at www.novell.com.
 # ------------------------------------------------------------------------------
 
-# File:	modules/Ldap.ycp
-# Module:	Configuration of LDAP client
-# Summary:	LDAP client configuration data, I/O functions.
-# Authors:	Thorsten Kukuk <kukuk@suse.de>
-#		Anas Nashif <nashif@suse.de>
+# File:        modules/Ldap.ycp
+# Module:        Configuration of LDAP client
+# Summary:        LDAP client configuration data, I/O functions.
+# Authors:        Peter Varkoly <varkoly@suse.com>
+#               Thorsten Kukuk <kukuk@suse.de>
+#                Anas Nashif <nashif@suse.de>
 #
 # $Id$
 require "yast"
@@ -102,7 +103,7 @@ module Yast
 
       # base DN
       @base_dn = ""
-      @old_base_dn = nil
+      @old_base_dn = ""
       @base_dn_changed = false
 
       @ldap_tls = true
@@ -371,42 +372,13 @@ module Yast
       @read_settings
     end
 
-    # For sssd, some kerberos values are needed
-    def ReadKrb5Conf
-      realm = Convert.convert(
-        SCR.Read(path(".etc.krb5_conf.v.libdefaults.default_realm")),
-        :from => "any",
-        :to   => "list <string>"
-      )
-      realm = [] if realm == nil
-      @krb5_realm = Ops.get(realm, 0, "")
-
-      kdcs = Convert.convert(
-        SCR.Read(
-          Builtins.add(
-            Builtins.add(path(".etc.krb5_conf.v"), @krb5_realm),
-            "kdc"
-          )
-        ),
-        :from => "any",
-        :to   => "list <string>"
-      )
-      kdcs = [] if kdcs == nil
-      @krb5_kdcip = Builtins.mergestring(kdcs, ",")
-
-      true
-    end
-
-
-    # Read single entry from /etc/ldap.conf file
+    # Read single entry from /etc/openldap/ldap.conf file
     # @param [String] entry entry name
     # @param [String] defvalue default value if entry is not present
     # @return entry value
     def ReadLdapConfEntry(entry, defvalue)
       value = defvalue
-      ret = SCR.Read(
-        Builtins.add(path(".etc.ldap_conf.v.\"/etc/ldap.conf\""), entry)
-      )
+      ret = SCR.Read(".ldap_conf.v."+ entry )
       if ret == nil
         value = defvalue
       elsif Ops.is_list?(ret)
@@ -417,13 +389,11 @@ module Yast
       value
     end
 
-    # Read multi-valued entry from /etc/ldap.conf file
+    # Read multi-valued entry from /etc/openldap/ldap.conf file
     # @param [String] entry entry name
     # @return entry value
     def ReadLdapConfEntries(entry)
-      ret = SCR.Read(
-        Builtins.add(path(".etc.ldap_conf.v.\"/etc/ldap.conf\""), entry)
-      )
+      ret = SCR.Read( ".ldap_conf.v."+ entry )
       if ret == nil
         return []
       elsif Ops.is_list?(ret)
@@ -433,22 +403,18 @@ module Yast
       end
     end
 
-    # Write (single valued) entry to /etc/ldap.conf
+    # Write (single valued) entry to /etc/openldap/ldap.conf
     # @param [String] entry name
     # @param [String] value; if value is nil, entry will be removed
     def WriteLdapConfEntry(entry, value)
-      SCR.Write(
-        Builtins.add(path(".etc.ldap_conf.v.\"/etc/ldap.conf\""), entry),
-        value == nil ? nil : [value]
-      )
-
+      SCR.Write( ".ldap_conf.v." + entry, value.nil ? nil : [value] )
       nil
     end
 
-    # Write (possibly multi valued) entry to /etc/ldap.conf
+    # Write (possibly multi valued) entry to /etc/openldap/ldap.conf
     # @param [String] entry name
     # @param [Array<String>] value it is of type [attr1, attr2],
-    # in /etc/ldap.conf should be written as "entry attr1 attr2"
+    # in /etc/openldap/ldap.conf should be written as "entry attr1 attr2"
     # @example to write "nss_map_attribute       uniquemember member", call
     # WriteLdapConfEntries ("nss_map_attribute", ["uniquemember", "member"])
     def WriteLdapConfEntries(entry, value)
@@ -465,15 +431,12 @@ module Yast
         end
       end
       values = [Builtins.mergestring(value, " ")] if Builtins.size(current) == 0
-      SCR.Write(
-        Builtins.add(path(".etc.ldap_conf.v.\"/etc/ldap.conf\""), entry),
-        values
-      )
+      SCR.Write( ".ldap_conf.v." + entry, values )
 
       nil
     end
 
-    # Add a new value to the entry in /etc/ldap.conf
+    # Add a new value to the entry in /etc/openldap/ldap.conf
     # @param [String] entry name
     # @param [String] value
     def AddLdapConfEntry(entry, value)
@@ -481,10 +444,7 @@ module Yast
       current = Builtins.maplist(current) { |e| Builtins.tolower(e) }
 
       if !Builtins.contains(current, Builtins.tolower(value))
-        SCR.Write(
-          Builtins.add(path(".etc.ldap_conf.v.\"/etc/ldap.conf\""), entry),
-          Builtins.union(current, [value])
-        )
+        SCR.Write( ".ldap_conf.v." + entry, current | [value] )
       end
 
       nil
@@ -502,8 +462,13 @@ module Yast
         Builtins.maplist(Builtins.splitstring(uri, " \t")) do |u|
           url = URL.Parse(u)
           h = Ops.get_string(url, "host", "")
-          if Ops.get_string(url, "port", "") != ""
-            h = Builtins.sformat("%1:%2", h, Ops.get_string(url, "port", ""))
+          p = Ops.get_string(url, "port", "")
+          if Ops.get_string(url, "scheme","") == "ldaps"
+             @ldap_tls = "yes"
+          end
+          if p != ""
+            @ldap_tls = "yes" if( p == "636" || p == "ldaps" )
+            h = "#{h}:#{p}"
           end
           h
         end,
@@ -531,25 +496,19 @@ module Yast
 
       CheckOES()
 
-      Builtins.foreach(["passwd", "group", "passwd_compat", "group_compat"]) do |db|
-        Ops.set(@nsswitch, db, Nsswitch.ReadDb(db))
-      end
+      ["passwd", "group", "passwd_compat", "group_compat"].each { |db| @nsswitch[db] = Nsswitch.ReadDb(db) }
 
       # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
-      @start = Builtins.contains(Ops.get_list(@nsswitch, "passwd", []), "ldap") ||
-        Builtins.contains(Ops.get_list(@nsswitch, "passwd", []), "compat") &&
-          Builtins.contains(
-            Ops.get_list(@nsswitch, "passwd_compat", []),
-            "ldap"
-          ) ||
-        @oes && Builtins.contains(Ops.get_list(@nsswitch, "passwd", []), "nam")
+      @start = @nsswitch["passwd"].include?("ldap") || 
+               ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
+               ( @auth["oes"] && @nsswitch["passwd"].include?("nam") )
 
       if @start
         # nss_ldap is used
         @sssd = false
       else
         # ... or as 'sssd'
-        @sssd = Builtins.contains(Ops.get_list(@nsswitch, "passwd", []), "sss")
+        @sssd  = @nsswitch["passwd"].include?("sss")
         @start = @sssd
       end
 
@@ -559,32 +518,38 @@ module Yast
         @sssd = false
       end
 
-      @old_start = @start
-
-      @nis_available = Builtins.contains(
-        Ops.get_list(@nsswitch, "passwd", []),
-        "nis"
-      ) ||
-        Builtins.contains(Ops.get_list(@nsswitch, "passwd", []), "compat") &&
-          (Builtins.contains(
-            Ops.get_list(@nsswitch, "passwd_compat", []),
-            "nis"
-          ) ||
-            Builtins.size(Ops.get_list(@nsswitch, "passwd_compat", [])) == 0)
+      @nis_available = @nsswitch["passwd"].include?("nis") ||
+                     ( @nsswitch["passwd"].include?("compat") && 
+                        @nsswitch["passwd_compat"].include?("nis") ||
+                        @nsswitch["passwd_compat"].empty? )
       @nis_available = @nis_available && Service.Status("ypbind") == 0
 
-      @server = ReadLdapHosts()
+      @server         = ReadLdapHosts()
+      @base_dn        = ReadLdapConfEntry("BASE", "")
+      @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
+      @tls_cacertdir  = ReadLdapConfEntry("TLS_CACERTDIR", "")
+      @bind_dn        = ReadLdapConfEntry("BINDDN","cn=Administrator," + @base_dn )
+      @base_config_dn = "ou=ldapconfig," +@base_dn
 
-      @base_dn = ReadLdapConfEntry("base", "")
+      true
+    end
 
-      @old_base_dn = @base_dn
-      @old_server = @server
+    # Dump the LDAP settings to a map based on /etc/openldap/slapd.conf
+    # @return $["start":, "servers":[...], "domain":]
+    def Export
+      e = {
+        "start_ldap"       => @start,
+        "ldap_server"      => @server,
+        "ldap_domain"      => @base_dn,
+        "ldap_tls"         => @ldap_tls,
+        "bind_dn"          => @bind_dn,
+        "base_config_dn"   => @base_config_dn
+      }
+    end
 
+    def FindLDAPServer
       # ask DNS for LDAP server address if none is defined
-      if (@server == "" ||
-          @server == "127.0.0.1" && @base_dn == "dc=example,dc=com") &&
-          FileUtils.Exists("/usr/bin/dig") &&
-          !Mode.test
+        return nil unless FileUtils.Exists("/usr/bin/dig")
         domain = Hostname.CurrentDomain
         # workaround for bug#393951
         if domain == "" && Stage.cont
@@ -637,165 +602,7 @@ module Yast
             @base_dn = dn
           end
         end
-      end
-
-      @ldap_tls = ReadLdapConfEntry("ssl", "no") == "start_tls"
-      @tls_cacertdir = ReadLdapConfEntry("tls_cacertdir", "")
-      @tls_cacertfile = ReadLdapConfEntry("tls_cacertfile", "")
-      @tls_checkpeer = ReadLdapConfEntry("tls_checkpeer", "yes")
-
-      @nss_base_passwd = ReadLdapConfEntry("nss_base_passwd", @base_dn)
-      @nss_base_shadow = ReadLdapConfEntry("nss_base_shadow", @base_dn)
-      @nss_base_group = ReadLdapConfEntry("nss_base_group", @base_dn)
-
-      @pam_password = ReadLdapConfEntry("pam_password", "exop")
-      # check if Password Modify extenstion is supported (bnc#546398, c#6)
-      if @pam_password == "exop"
-        if 0 == SCR.Execute(path(".target.bash"), "ldapsearch -x -b '' -s base") &&
-            0 !=
-              SCR.Execute(
-                path(".target.bash"),
-                "ldapsearch -x -b '' -s base supportedExtension | grep -i '^supportedExtension:[[:space:]]*1.3.6.1.4.1.4203.1.11.1'"
-              ) # LDAP server accessible
-          Builtins.y2warning(
-            "'exop' value not supported on server, using 'crypt'"
-          )
-          @pam_password = "crypt"
-        end
-      end
-
-      # read sysconfig values
-      @base_config_dn = Convert.to_string(
-        SCR.Read(path(".sysconfig.ldap.BASE_CONFIG_DN"))
-      )
-      @base_config_dn = "" if @base_config_dn == nil
-
-      @file_server = Convert.to_string(
-        SCR.Read(path(".sysconfig.ldap.FILE_SERVER"))
-      ) == "yes"
-
-      if @read_settings || @bind_dn == ""
-        @bind_dn = Convert.to_string(SCR.Read(path(".sysconfig.ldap.BIND_DN")))
-      end
-      if @bind_dn == nil || @bind_dn == ""
-        @bind_dn = ReadLdapConfEntry("binddn", "")
-      end
-
-      if @read_settings || @member_attribute == ""
-        map_attrs = ReadLdapConfEntries("nss_map_attribute")
-        Builtins.foreach(map_attrs) do |map_attr|
-          if Builtins.issubstring(Builtins.tolower(map_attr), "uniquemember")
-            attr = Builtins.splitstring(map_attr, " \t")
-            if Builtins.tolower(Ops.get(attr, 0, "")) == "uniquemember"
-              @member_attribute = Ops.get(attr, 1, @member_attribute)
-              # LDAP needs to know correct attribute name
-              if @member_attribute == "uniquemember"
-                @member_attribute = "uniqueMember"
-              end
-              @old_member_attribute = @member_attribute
-            end
-          end
-        end
-      end
-
-      # install on demand
-      @_autofs_allowed = true
-      @_start_autofs = @_autofs_allowed && Service.Enabled("autofs")
-
-      # read /etc/passwd to check + line:
-      if !Convert.to_boolean(
-          SCR.Execute(path(".passwd.init"), { "base_directory" => "/etc" })
-        )
-        error = Convert.to_string(SCR.Read(path(".passwd.error")))
-        Builtins.y2error("error: %1", error)
-      else
-        @passwd_read = true
-        @plus_lines_passwd = Convert.convert(
-          SCR.Read(path(".passwd.passwd.pluslines")),
-          :from => "any",
-          :to   => "list <string>"
-        )
-        Builtins.foreach(@plus_lines_passwd) do |plus_line|
-          plus = Builtins.splitstring(plus_line, ":")
-          if Ops.get(plus, Ops.subtract(Builtins.size(plus), 1), "") == "/sbin/nologin"
-            @login_enabled = false
-          end
-        end
-      end
-
-      @mkhomedir = Pam.Enabled("mkhomedir")
-
-      Autologin.Read
-
-      ReadKrb5Conf() if Pam.Enabled("krb5")
-      if FileUtils.Exists("/etc/sssd/sssd.conf")
-        # read realm and kdc from sssd.conf if available
-        domain = Builtins.add(path(".etc.sssd_conf.v"), "domain/default")
-        realm = Convert.to_string(SCR.Read(Builtins.add(domain, "krb5_realm")))
-        @krb5_realm = realm if realm != nil
-        kdc = Convert.to_string(SCR.Read(Builtins.add(domain, "krb5_kdcip")))
-        @krb5_kdcip = kdc if kdc != nil
-        schema = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "ldap_schema"))
-        )
-        @sssd_ldap_schema = schema if schema != nil
-
-        cache_credentials = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "cache_credentials"))
-        )
-        @sssd_cache_credentials = cache_credentials != nil &&
-          Builtins.tolower(cache_credentials) == "true"
-        enumerate = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "enumerate"))
-        )
-        @sssd_enumerate = enumerate != nil &&
-          Builtins.tolower(enumerate) == "true"
-
-        id_start_tls = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "ldap_id_use_start_tls"))
-        )
-        if id_start_tls != nil
-          @ldap_tls = Builtins.tolower(id_start_tls) == "true"
-        else
-          # true for SSSD by default, if not overriden by ldap_id_use_start_tls
-          @ldap_tls = true
-        end
-
-        # replace nss_base_passwd with ldap_user_search_base (if it is set)
-        user_base = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "ldap_user_search_base"))
-        )
-        @nss_base_passwd = user_base if user_base != nil
-        group_base = Convert.to_string(
-          SCR.Read(Builtins.add(domain, "ldap_group_search_base"))
-        )
-        @nss_base_group = group_base if group_base != nil
-      end
-      @sssd_with_krb = true if @krb5_realm != "" && @krb5_kdcip != ""
-
-      # Now check if previous configuration of LDAP server didn't proposed
-      # some better values:
-      if Stage.cont
-        if Ops.greater_than(Builtins.size(@initial_defaults), 0)
-          Builtins.y2milestone("using values defined externaly")
-          old_s = @old_server
-          old_d = @old_base_dn
-          old_m = @old_member_attribute
-          Set(@initial_defaults)
-          @old_server = old_s
-          @old_base_dn = old_d
-          @old_member_attribute = old_m
-        end
-      end
-
-      if @member_attribute == ""
-        @member_attribute = "member"
-        @modified = true
-      end
-
-      true
     end
-
     # ------------- functions for work with LDAP tree contents ------------
 
     # Error popup for errors detected during LDAP operation
@@ -940,10 +747,7 @@ module Yast
     def GetBindDN
       if @bind_pass == nil && Builtins.size(@bind_dn) == 0
         Builtins.y2milestone("--- bind dn not read yet or empty, reading now")
-        @bind_dn = Convert.to_string(SCR.Read(path(".sysconfig.ldap.BIND_DN")))
-        if @bind_dn == nil || @bind_dn == ""
-          @bind_dn = ReadLdapConfEntry("binddn", "")
-        end
+        @bind_dn = ReadLdapConfEntry("BINDDN", "")
       end
       @bind_dn
     end
@@ -1241,7 +1045,7 @@ module Yast
       ret
     end
 
-    # Asks user for bind password to LDAP server
+    # Asks user for bind_dn and password to LDAP server
     # @param anonymous if anonymous access could be allowed
     # @return password
     def GetLDAPPassword(enable_anonymous)
@@ -1249,8 +1053,9 @@ module Yast
         Opt(:decorated),
         VBox(
           HSpacing(40),
+          TextEntry(Id(:bdn), Opt(:hstretch), _("BindDN"), @bind_dn ),
           # password entering label
-          Password(Id(:pw), Opt(:hstretch), _("&LDAP Server Password")),
+          Password(Id(:pw),   Opt(:hstretch), _("&LDAP Server Password")),
           # label
           Label(
             Builtins.sformat(
@@ -1260,7 +1065,6 @@ module Yast
             )
           ),
           # label (%1 is admin DN - string)
-          Label(Builtins.sformat(_("Administrator: %1"), GetBindDN())),
           ButtonBox(
             PushButton(Id(:ok), Opt(:key_F10, :default), Label.OKButton),
             # button label
@@ -1274,7 +1078,8 @@ module Yast
       ret = UI.UserInput
       pw = ""
       if ret == :ok
-        pw = Convert.to_string(UI.QueryWidget(Id(:pw), :Value))
+        pw       = Convert.to_string(UI.QueryWidget(Id(:pw), :Value))
+        @bind_dn = Convert.to_string(UI.QueryWidget(Id(:bdn), :Value))
         @anonymous = false
       elsif ret == :cancel
         pw = nil
@@ -1976,208 +1781,9 @@ module Yast
       error == {} && @bind_pass != nil
     end
 
-    # Modify also /etc/openldap/ldap.conf for the use of
-    # ldap client utilities (like ldapsearch)
-    # @return modified?
-    def WriteOpenLdapConf
-      write_openldap_conf = @openldap_modified
-
-      return false if !Package.Installed("openldap2-client")
-
-      out = Convert.to_map(
-        SCR.Execute(path(".target.bash_output"), "/bin/rpm -V openldap2-client")
-      )
-
-      open_host = []
-      open_uri = Convert.to_list(
-        SCR.Read(path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".uri"))
-      )
-      if open_uri == []
-        open_uri = Convert.to_list(
-          SCR.Read(path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".URI"))
-        )
-      end
-      if open_uri == []
-        open_host = Convert.to_list(
-          SCR.Read(path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".host"))
-        )
-      else
-        open_host = [uri2servers(Ops.get_string(open_uri, 0, ""))]
-      end
-      open_base = Convert.to_list(
-        SCR.Read(path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".base"))
-      )
-
-      # if the config file was not modified by user yet
-      if !Builtins.issubstring(
-          Ops.get_string(out, "stdout", ""),
-          "/etc/openldap/ldap.conf"
-        )
-        write_openldap_conf = true
-      # if there are same values as in /etc/ldap.conf
-      elsif @old_server == Ops.get_string(open_host, 0, "") &&
-          @old_base_dn == Ops.get_string(open_base, 0, "")
-        write_openldap_conf = true
-      end
-
-      if write_openldap_conf
-        # update ldap.conf
-        SCR.Write(
-          path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".host"),
-          nil
-        )
-
-        uri = Builtins.mergestring(
-          Builtins.maplist(Builtins.splitstring(@server, " \t")) do |u|
-            Ops.add("ldap://", u)
-          end,
-          " "
-        )
-
-        SCR.Write(
-          path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".uri"),
-          [uri]
-        )
-
-        SCR.Write(
-          path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".base"),
-          [@base_dn]
-        )
-
-        SCR.Write(
-          path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".TLS_CACERTDIR"),
-          @tls_cacertdir == "" ? nil : [@tls_cacertdir]
-        )
-        SCR.Write(
-          path(".etc.ldap_conf.v.\"/etc/openldap/ldap.conf\".TLS_CACERT"),
-          @tls_cacertfile == "" ? nil : [@tls_cacertfile]
-        )
-
-        Builtins.y2milestone("file /etc/openldap/ldap.conf was modified")
-      end
-      write_openldap_conf
-    end
-
-    # Write updated /etc/sssd/sssd.conf file
-    def WriteSSSDConfig
-      if !FileUtils.Exists("/etc/sssd/sssd.conf")
-        Builtins.y2warning(
-          "file /etc/sssd/sssd.conf does not exists: not writing"
-        )
-        return false
-      end
-
-      sections = SCR.Dir(path(".etc.sssd_conf.section"))
-
-      SCR.Write(path(".etc.sssd_conf.v.sssd.domains"), "default")
-
-
-      # "The "services" setting should have the value "nss, pam"
-      SCR.Write(path(".etc.sssd_conf.v.sssd.services"), "nss,pam")
-
-      # " Make sure that "filter_groups" and "filter_users" in the "[nss]" section contains "root".
-      f_g = Convert.to_string(
-        SCR.Read(path(".etc.sssd_conf.v.nss.filter_groups"))
-      )
-      f_g = "" if f_g == nil
-      l = Convert.convert(
-        Builtins.union(Builtins.splitstring(f_g, ","), ["root"]),
-        :from => "list",
-        :to   => "list <string>"
-      )
-      SCR.Write(
-        path(".etc.sssd_conf.v.nss.filter_groups"),
-        Builtins.mergestring(l, ",")
-      )
-
-      f_u = Convert.to_string(
-        SCR.Read(path(".etc.sssd_conf.v.nss.filter_users"))
-      )
-      f_u = "" if f_u == nil
-      l = Convert.convert(
-        Builtins.union(Builtins.splitstring(f_u, ","), ["root"]),
-        :from => "list",
-        :to   => "list <string>"
-      )
-      SCR.Write(
-        path(".etc.sssd_conf.v.nss.filter_users"),
-        Builtins.mergestring(l, ",")
-      )
-
-      domain = Builtins.add(path(".etc.sssd_conf.v"), "domain/default")
-
-      uri = Builtins.mergestring(
-        Builtins.maplist(Builtins.splitstring(@server, " \t")) do |s|
-          Builtins.sformat("ldap://%1", s)
-        end,
-        ","
-      )
-      SCR.Write(Builtins.add(domain, "ldap_uri"), uri)
-      SCR.Write(Builtins.add(domain, "ldap_search_base"), @base_dn)
-      SCR.Write(Builtins.add(domain, "ldap_schema"), @sssd_ldap_schema)
-      SCR.Write(Builtins.add(domain, "id_provider"), "ldap")
-      SCR.Write(Builtins.add(domain, "ldap_user_uuid"), "entryuuid")
-      SCR.Write(Builtins.add(domain, "ldap_group_uuid"), "entryuuid")
-
-      SCR.Write(
-        Builtins.add(domain, "ldap_id_use_start_tls"),
-        @ldap_tls ? "True" : "False"
-      )
-      SCR.Write(
-        Builtins.add(domain, "enumerate"),
-        @sssd_enumerate ? "True" : "False"
-      )
-      SCR.Write(
-        Builtins.add(domain, "cache_credentials"),
-        @sssd_cache_credentials ? "True" : "False"
-      )
-      SCR.Write(
-        Builtins.add(domain, "ldap_tls_cacertdir"),
-        @tls_cacertdir == "" ? nil : @tls_cacertdir
-      )
-      SCR.Write(
-        Builtins.add(domain, "ldap_tls_cacert"),
-        @tls_cacertfile == "" ? nil : @tls_cacertfile
-      )
-
-      # remove the keys if their value is same as default (base_dn)
-      SCR.Write(
-        Builtins.add(domain, "ldap_user_search_base"),
-        @nss_base_passwd != @base_dn && @nss_base_passwd != "" ? @nss_base_passwd : nil
-      )
-      SCR.Write(
-        Builtins.add(domain, "ldap_group_search_base"),
-        @nss_base_group != @base_dn && @nss_base_group != "" ? @nss_base_group : nil
-      )
-
-      if !Builtins.contains(sections, "domain/default")
-        SCR.Write(
-          Builtins.add(path(".etc.sssd_conf.section_comment"), "domain/default"),
-          "\n# Section created by YaST\n"
-        )
-      end
-
-      # In a mixed Kerberos/LDAP setup the following changes are needed in the [domain/default] section:
-      if @sssd_with_krb
-        SCR.Write(Builtins.add(domain, "auth_provider"), "krb5")
-        SCR.Write(Builtins.add(domain, "chpass_provider"), "krb5")
-
-        SCR.Write(Builtins.add(domain, "krb5_realm"), @krb5_realm)
-        SCR.Write(Builtins.add(domain, "krb5_kdcip"), @krb5_kdcip)
-      else
-        SCR.Write(Builtins.add(domain, "chpass_provider"), "ldap")
-        SCR.Write(Builtins.add(domain, "auth_provider"), "ldap")
-      end
-
-      if !SCR.Write(path(".etc.sssd_conf"), nil)
-        Builtins.y2error("error writing ldap.conf file")
-      end
-      true
-    end
-
     # If a file does not + entry, add it.
-    # @param	is login allowed?
-    # @return	success?
+    # @param   is login allowed?
+    # @return  success?
     def WritePlusLine(login)
       file = "/etc/passwd"
       what = "+::::::"
@@ -2523,505 +2129,6 @@ module Yast
       @nds
     end
 
-    # Adpat passwd and group cache in /etc/nscd.conf
-    # Caching should be disabled with sssd on
-    # @param [Boolean] start_sssd if sssd will be started
-    def WriteNscdCache(start_sssd)
-      enable_cache = Convert.convert(
-        SCR.Read(path(".etc.nscd_conf.v.enable-cache")),
-        :from => "any",
-        :to   => "list <string>"
-      )
-      enable_cache = Builtins.maplist(enable_cache) do |sect|
-        l = Builtins.filter(Builtins.splitstring(sect, " \t")) do |part|
-          part != ""
-        end
-        if Ops.get(l, 0, "") == "passwd" || Ops.get(l, 0, "") == "group"
-          next Builtins.sformat(
-            "%1\t\t%2",
-            Ops.get(l, 0, ""),
-            start_sssd ? "no" : "yes"
-          )
-        end
-        sect
-      end
-      return false if enable_cache == [] || enable_cache == nil
-      ret = SCR.Write(path(".etc.nscd_conf.v.enable-cache"), enable_cache)
-      # ensure the changes are written
-      ret = ret && SCR.Write(path(".etc.nscd_conf"), nil)
-      ret
-    end
-
-    # Saves LDAP configuration.
-    # @param [Proc] abort block for abort
-    # @return [Symbol]
-    def Write(abort)
-      abort = deep_copy(abort)
-      # progress caption
-      caption = _("Writing LDAP Configuration...")
-      no_of_steps = 4
-
-      Progress.New(
-        caption,
-        " ",
-        no_of_steps,
-        [
-          # progress stage label
-          _("Stop services"),
-          # progress stage label
-          _("Update configuration files"),
-          # progress stage label
-          _("Start services"),
-          # progress stage label
-          _("Update configuration in LDAP directory")
-        ],
-        [
-          # progress step label
-          _("Stopping services..."),
-          # progress step label
-          _("Updating configuration files..."),
-          # progress step label
-          _("Starting services..."),
-          # progress step label
-          _("Updating configuration in LDAP directory..."),
-          # final progress step label
-          _("Finished")
-        ],
-        ""
-      )
-
-      # -------------------- stop services
-      Progress.NextStage
-      return :abort if Builtins.eval(abort)
-
-
-      # initialize 'oes' value when Read was not called (bnc#670288)
-      CheckOES() if Mode.autoinst
-
-      ypbind_running = false
-
-      if !@write_only
-        ypbind_running = Service.Status("ypbind") == 0
-        Service.Stop("ypbind")
-      elsif @write_only && Mode.autoinst
-        # Read existing nsswitch in autoinstallation mode
-        Builtins.foreach(["passwd", "group", "passwd_compat", "group_compat"]) do |db|
-          Ops.set(@nsswitch, db, Nsswitch.ReadDb(db))
-        end
-      end
-
-      # -------------------- update config files
-      Progress.NextStage
-      return :abort if Builtins.eval(abort)
-
-      if @modified
-        # update ldap.conf
-        WriteLdapConfEntry("host", nil)
-        uri = Builtins.mergestring(
-          Builtins.maplist(Builtins.splitstring(@server, " \t")) do |u|
-            Ops.add("ldap://", u)
-          end,
-          " "
-        )
-        WriteLdapConfEntry("uri", uri)
-        WriteLdapConfEntry("base", @base_dn)
-
-        if @member_attribute != @old_member_attribute
-          WriteLdapConfEntries(
-            "nss_map_attribute",
-            ["uniqueMember", @member_attribute]
-          )
-        end
-
-        WriteOpenLdapConf()
-
-        if @ldap_tls
-          WriteLdapConfEntry("ssl", "start_tls")
-        else
-          WriteLdapConfEntry("ssl", "no")
-        end
-
-        WriteLdapConfEntry(
-          "tls_cacertdir",
-          @tls_cacertdir == "" ? nil : @tls_cacertdir
-        )
-        WriteLdapConfEntry(
-          "tls_cacertfile",
-          @tls_cacertfile == "" ? nil : @tls_cacertfile
-        )
-
-        Pam.Set("mkhomedir", @mkhomedir)
-
-        WriteLdapConfEntry("pam_password", @pam_password)
-
-        # see bugs #suse37665 (pam_filter necessary), #118779 (not always)
-        if ReadLdapConfEntry("pam_filter", "") == ""
-          AddLdapConfEntry("pam_filter", "objectClass=posixAccount")
-        end
-
-        if @sssd
-          WriteSSSDConfig()
-        else
-          # save the user and group bases
-          @user_base = @base_dn
-          @group_base = @base_dn
-
-          WriteLdapConfEntry(
-            "nss_base_passwd",
-            @nss_base_passwd != @base_dn && @nss_base_passwd != "" ? @nss_base_passwd : nil
-          )
-          WriteLdapConfEntry(
-            "nss_base_shadow",
-            @nss_base_shadow != @base_dn && @nss_base_shadow != "" ? @nss_base_shadow : nil
-          )
-          WriteLdapConfEntry(
-            "nss_base_group",
-            @nss_base_group != @base_dn && @nss_base_group != "" ? @nss_base_group : nil
-          )
-        end
-
-        # default value is 'yes'
-        WriteLdapConfEntry(
-          "tls_checkpeer",
-          @tls_checkpeer == "yes" ? nil : @tls_checkpeer
-        )
-        WriteNscdCache(@start && @sssd)
-      end
-      if @start # ldap used for authentocation
-        # ---------- correct pam_password value for Novell eDirectory
-        if @pam_password != "nds" && @expert_ui
-          CheckNDS() if !@nds_checked && !Mode.autoinst
-          @pam_password = "nds" if @nds
-          WriteLdapConfEntry("pam_password", @pam_password)
-        end
-
-
-        if !@oes
-          if @sssd
-            Pam.Add("sss")
-            # Add "sss" to the passwd and group databases in nsswitch.conf
-
-            Builtins.foreach(["passwd", "group"]) do |db|
-              # replace 'ldap' with sss
-              Ops.set(
-                @nsswitch,
-                db,
-                Builtins.filter(Ops.get_list(@nsswitch, db, [])) do |v|
-                  v != "ldap"
-                end
-              )
-              Ops.set(
-                @nsswitch,
-                db,
-                Builtins.union(Ops.get_list(@nsswitch, db, []), ["sss"])
-              )
-              Nsswitch.WriteDb(
-                db,
-                Convert.convert(
-                  Ops.get(@nsswitch, db) { ["sss"] },
-                  :from => "any",
-                  :to   => "list <string>"
-                )
-              )
-              # remove 'ldap' from _compat entries
-              new_db = Ops.add(db, "_compat")
-              Ops.set(
-                @nsswitch,
-                new_db,
-                Builtins.filter(Ops.get_list(@nsswitch, new_db, [])) do |v|
-                  v != "ldap"
-                end
-              )
-              Nsswitch.WriteDb(new_db, Ops.get_list(@nsswitch, new_db, []))
-            end
-            # remove ldap entries from ldap-only db's
-            Builtins.foreach(["services", "netgroup", "aliases"]) do |db|
-              db_l = Builtins.filter(Nsswitch.ReadDb(db)) { |v| v != "ldap" }
-              db_l = ["files"] if db_l == []
-              Nsswitch.WriteDb(db, db_l)
-            end
-
-            if Pam.Enabled("krb5")
-              Builtins.y2milestone(
-                "configuring 'sss', so 'krb5' will be removed"
-              )
-              Pam.Remove("ldap-account_only")
-              Pam.Remove("krb5")
-            end
-            Pam.Remove("ldap")
-          else
-            # pam settigs
-            if Pam.Enabled("krb5")
-              # If kerberos is used for authentication we configure
-              # pam_ldap in a way that we use only the account checking.
-              # Other configuration would mess up password changing
-              Pam.Add("ldap-account_only")
-            else
-              Pam.Add("ldap")
-            end
-            # sss was removed, using pam_ldap (bnc#680184)
-            Pam.Remove("sss") if Pam.Enabled("sss")
-
-            # modify sources in /etc/nsswitch.conf
-            Nsswitch.WriteDb("passwd", ["compat"])
-            Nsswitch.WriteDb(
-              "passwd_compat",
-              Convert.convert(
-                Builtins.union(
-                  Ops.get_list(@nsswitch, "passwd_compat", []),
-                  ["ldap"]
-                ),
-                :from => "list",
-                :to   => "list <string>"
-              )
-            )
-
-            Builtins.foreach(["services", "netgroup", "aliases"]) do |db|
-              Nsswitch.WriteDb(db, ["files", "ldap"])
-            end
-
-            if Builtins.contains(Ops.get_list(@nsswitch, "group", []), "compat") &&
-                Builtins.contains(
-                  Ops.get_list(@nsswitch, "group_compat", []),
-                  "ldap"
-                )
-              Builtins.y2milestone("group_compat present, not changing")
-            else
-              Nsswitch.WriteDb("group", ["files", "ldap"])
-            end
-          end
-
-          Nsswitch.Write
-        end
-        Autologin.Write(@write_only)
-      elsif !@oes # ldap is not used
-        Builtins.foreach(["passwd", "group"]) do |db|
-          new_db = Ops.add(db, "_compat")
-          Ops.set(
-            @nsswitch,
-            db,
-            Builtins.filter(Ops.get_list(@nsswitch, db, [])) do |v|
-              v != "ldap" && v != "sss"
-            end
-          )
-          if Ops.get_list(@nsswitch, db, []) == [] ||
-              Ops.get_list(@nsswitch, db, []) == ["files"]
-            Ops.set(@nsswitch, db, ["compat"])
-          end
-          Ops.set(
-            @nsswitch,
-            new_db,
-            Builtins.filter(Ops.get_list(@nsswitch, new_db, [])) do |v|
-              v != "ldap" && v != "sss"
-            end
-          )
-          Nsswitch.WriteDb(
-            db,
-            Convert.convert(
-              Ops.get(@nsswitch, db) { ["compat"] },
-              :from => "any",
-              :to   => "list <string>"
-            )
-          )
-          Nsswitch.WriteDb(new_db, Ops.get_list(@nsswitch, new_db, []))
-        end
-        Builtins.foreach(["services", "netgroup", "aliases"]) do |db|
-          db_l = Builtins.filter(Nsswitch.ReadDb(db)) do |v|
-            v != "ldap" && v != "sss"
-          end
-          db_l = ["files"] if db_l == []
-          Nsswitch.WriteDb(db, db_l)
-        end
-
-        Nsswitch.Write
-
-        if Pam.Enabled("ldap")
-          Pam.Remove("ldap")
-        elsif Pam.Enabled("ldap-account_only")
-          Pam.Remove("ldap-account_only")
-        end
-        Pam.Remove("sss") if Pam.Enabled("sss")
-      end
-
-
-      # write the changes in /etc/ldap.conf and /etc/openldap/ldap.conf now
-      if !SCR.Write(path(".etc.ldap_conf"), nil)
-        Builtins.y2error("error writing ldap.conf file")
-      end
-      SCR.UnmountAgent(path(".etc.ldap_conf")) if Stage.cont
-
-      # write sysconfig values
-      SCR.Write(
-        path(".sysconfig.ldap.FILE_SERVER"),
-        @file_server ? "yes" : "no"
-      )
-
-      SCR.Write(path(".sysconfig.ldap.BASE_CONFIG_DN"), @base_config_dn)
-
-      SCR.Write(path(".sysconfig.ldap.BIND_DN"), @bind_dn)
-
-      # write the changes in /etc/sysconfig/ldap now
-      if !SCR.Write(path(".sysconfig.ldap"), nil)
-        Builtins.y2error("error writing /etc/sysconfig/ldap")
-      end
-
-      if @_autofs_allowed
-        if Nsswitch.WriteAutofs(@start && @_start_autofs, "ldap")
-          if @_start_autofs
-            Service.Adjust("autofs", "enable")
-          else
-            Service.Adjust("autofs", "disable")
-          end
-        end
-      end
-
-      WritePlusLine(@login_enabled) if @start && !@sssd
-
-      # -------------------- start services
-      Progress.NextStage
-      return :abort if Builtins.eval(abort)
-
-      if !@write_only
-        if @sssd && @start
-          # enable the sssd daemon to be started at bootup
-          Service.Adjust("sssd", "enable")
-          if Service.Status("sssd") == 0
-            Service.Restart("sssd")
-          else
-            Service.Start("sssd")
-          end
-        else
-          Service.Stop("sssd")
-          Service.Adjust("sssd", "disable")
-        end
-
-        if Package.Installed("nscd") && @modified
-          SCR.Execute(path(".target.bash"), "/usr/sbin/nscd -i passwd")
-          SCR.Execute(path(".target.bash"), "/usr/sbin/nscd -i group")
-          Service.RunInitScript("nscd", "try-restart")
-        end
-
-        if Package.Installed("zmd") && Service.Status("novell-zmd") == 0
-          Service.RunInitScript("novell-zmd", "try-restart")
-        end
-
-        Service.Restart("ypbind") if ypbind_running
-
-        Service.Restart("sshd") if @restart_sshd
-
-        if @_autofs_allowed
-          Service.Stop("autofs")
-
-          Service.Start("autofs") if @_start_autofs
-        end
-        # after finish of 2nd stage, restart running services (bnc#395402)
-        if @start && Stage.cont
-          services = []
-          Builtins.foreach(["dbus", "haldaemon"]) do |service|
-            if Service.Status(service) == 0
-              services = Builtins.add(services, service)
-            end
-          end
-          if Ops.greater_than(Builtins.size(services), 0)
-            Builtins.y2milestone("services %1 will be restarted", services)
-            SCR.Write(
-              path(".target.string"),
-              Ops.add(Directory.vardir, "/restart_services"),
-              Ops.add(Builtins.mergestring(services, "\n"), "\n")
-            )
-          end
-        end
-      elsif @sssd
-        # enable the sssd daemon to be started at bootup
-        Service.Adjust("sssd", @start ? "enable" : "disable")
-      end
-
-      # -------------------- write settings to LDAP
-      Progress.NextStage
-      return :abort if Builtins.eval(abort)
-
-      # ------------------------------ create the LDAP configuration (#40484)
-      ldap_ok = true
-      if @create_ldap && !Mode.autoinst
-        ldap_ok = CreateDefaultLDAPConfiguration()
-      end
-
-      if @ldap_modified && ldap_ok
-        CheckOrderOfCreation()
-
-        if WriteLDAP(@templates) && WriteLDAP(@config_modules)
-          @ldap_modified = false
-        end
-      end
-
-      # final stage
-      Progress.NextStage
-
-      # unbind is done in agent destructor
-      # ldap-client can be called more times from users module so we
-      # will have to know it is necessary to bind again
-      @bound = false
-      if @modified
-        @ldap_initialized = false
-        @old_server = @server
-        @old_base_dn = @base_dn
-      end
-      if @ldap_modified
-        @config_modules = {}
-        @templates = {}
-      end
-
-      # now clear the initial default values, so next time Read will read
-      # real values
-      if Stage.cont && Ops.greater_than(Builtins.size(@initial_defaults), 0)
-        first_s = GetFirstServer(@server)
-        if @start && ldap_ok &&
-            @base_dn == Ops.get_string(@initial_defaults, "ldap_domain", "") &&
-            (first_s == Ops.get_string(@initial_defaults, "ldap_server", "") ||
-              DNS.IsHostLocal(first_s))
-          @initial_defaults_used = true
-          Builtins.y2milestone("initial defaults were used")
-        end
-        @initial_defaults = {}
-      end
-
-      :next
-    end
-
-    # wrapper for Write, without abort block
-    def WriteNow
-      abort = lambda { false }
-
-      needed_packages = @sssd ? @sssd_packages : @pam_nss_packages
-      if @sssd_with_krb
-        needed_packages = Convert.convert(
-          Builtins.union(needed_packages, @kerberos_packages),
-          :from => "list",
-          :to   => "list <string>"
-        )
-      end
-
-      if @_start_autofs && !Package.Installed("autofs")
-        needed_packages = Builtins.add(needed_packages, "autofs")
-      end
-
-      if @start && !Package.InstalledAll(needed_packages)
-        if !Package.InstallAll(needed_packages)
-          Report.Error(Message.FailedToInstallPackages)
-        end
-        @start = false
-        @_start_autofs = false
-      end
-      # during CLI call nss_base_* are not edited: adapt them to new base DN
-      if @old_base_dn != @base_dn && @nss_base_passwd == @old_base_dn
-        @nss_base_passwd = @base_dn
-        @nss_base_shadow = @base_dn
-        @nss_base_group = @base_dn
-      end
-
-      Write(abort) == :next
-    end
-
 
     # Check if base config DN belongs to some existing object and offer
     # creating it if necessary
@@ -3086,13 +2193,6 @@ module Yast
       nil
     end
 
-    # Set the value of restart_sshd (= restart sshd during write)
-    def RestartSSHD(restart)
-      @restart_sshd = restart
-
-      nil
-    end
-
     # Get RDN (relative distinguished name) from dn
     def get_rdn(dn)
       dn_list = Builtins.splitstring(dn, ",")
@@ -3110,7 +2210,7 @@ module Yast
     # Create DN from cn by adding base config DN
     # (Can't work in general cases!)
     def get_dn(cn)
-      Builtins.sformat("cn=%1,%2", cn, Ldap.base_config_dn)
+      Builtins.sformat("cn=%1,%2", cn, @base_config_dn)
     end
 
     # Create new DN from DN by changing leading cn value
@@ -3225,13 +2325,7 @@ module Yast
     publish :function => :SetDomain, :type => "void (string)"
     publish :function => :SetDefaults, :type => "boolean (map)"
     publish :function => :SetReadSettings, :type => "boolean (boolean)"
-    publish :function => :AutoPackages, :type => "map ()"
-    publish :function => :Set, :type => "void (map)"
-    publish :function => :Import, :type => "boolean (map)"
     publish :function => :Export, :type => "map ()"
-    publish :function => :Summary, :type => "string ()"
-    publish :function => :ShortSummary, :type => "string ()"
-    publish :function => :ReadKrb5Conf, :type => "boolean ()"
     publish :function => :ReadLdapConfEntry, :type => "string (string, string)", :private => true
     publish :function => :ReadLdapConfEntries, :type => "list <string> (string)", :private => true
     publish :function => :WriteLdapConfEntry, :type => "void (string, string)", :private => true
@@ -3284,20 +2378,21 @@ module Yast
     publish :function => :CommitTemplates, :type => "boolean (map)"
     publish :function => :WriteToLDAP, :type => "map (map)"
     publish :function => :WriteLDAP, :type => "boolean (map)"
-    publish :function => :WriteOpenLdapConf, :type => "boolean ()"
-    publish :function => :WriteSSSDConfig, :type => "boolean ()"
     publish :function => :WritePlusLine, :type => "boolean (boolean)"
     publish :function => :CheckOrderOfCreation, :type => "boolean ()"
     publish :function => :CreateDefaultLDAPConfiguration, :type => "boolean ()", :private => true
     publish :function => :CheckNDS, :type => "boolean ()"
-    publish :function => :WriteNscdCache, :type => "boolean (boolean)", :private => true
     publish :function => :Write, :type => "symbol (block <boolean>)"
     publish :function => :WriteNow, :type => "boolean ()"
     publish :function => :CheckBaseConfig, :type => "boolean (string)"
     publish :function => :SetBindPassword, :type => "void (string)"
     publish :function => :SetAnonymous, :type => "void (boolean)"
     publish :function => :SetGUI, :type => "void (boolean)"
-    publish :function => :RestartSSHD, :type => "void (boolean)"
+    publish :function => :get_rdn, :type => "string (string)"
+    publish :function => :get_cn, :type => "string (string)"
+    publish :function => :get_dn, :type => "string (string)"
+    publish :function => :get_new_dn, :type => "string (string)"
+    publish :function => :get_string, :type => "string (string)"
   end
 
   Ldap = LdapClass.new

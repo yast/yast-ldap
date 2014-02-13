@@ -1,0 +1,40 @@
+/**
+ * File:
+ *   ldap_conf.scr
+ * Summary:
+ *   SCR Agent for reading/writing /etc/ldap.conf using the ini-agent
+ * Access:
+ *   read/write
+ * Authors:
+ *   Peter Varkoly <varkoly@suse.com>
+ * See:
+ *   yast2-agent-ini
+ *   libscr
+ *   man ldap.conf
+ * Example:
+ *   Dir(.ldap_conf)
+ *   (["base", "host"])
+ **
+ *   Read(.ldap_conf.v.host)
+ *   ("10.10.0.149")
+ **
+ *   Write(.etc.ldap_conf.v.base, "dc=myodmain, dc=com")
+ *   (true)
+ *
+ *
+ *    .ldap_conf
+ */
+.ldap_conf
+
+`ag_ini(
+  `IniAgent( "/etc/openldap/ldap.conf" ,
+    $[ "options" : ["global_values", "repeat_names"],
+       "comments" : [ "^#.*", "^[ \t]*$", ],
+       "params" : [
+         $[ "match" : [ "^[ \t]*([a-zA-Z0-9_]+)[ \t]+(.*[^ \t]|)[ \t]*$",
+                        "%s\t%s",
+                      ]
+         ]
+       ]
+    ]))
+

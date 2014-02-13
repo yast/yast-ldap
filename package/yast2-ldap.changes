@@ -1,4 +1,19 @@
 -------------------------------------------------------------------
+Thu Feb 13 11:12:38 UTC 2014 - varkoly@suse.com
+
+- Remove not used subroutines from the Ldap module
+- BNC#863329 - Missing Ldap::Export()
+- BNC#863612 YaST reports Cannot find client ldap/routines.rb
+- Simplify ldap-conf agent: Until now ldap informations was saved in 
+  3 places: /etc/ldap.conf /etc/openldap/ldap.conf and the sysconfig
+  file ldap. From now on only /etc/openldap/ldap.conf will be used.
+  /etc/ldap.conf is only for nss_ldap which is not provided anymore
+  The variable BIND_DN in sysconfig file ldap can saved in 
+  /etc/openldap/ldap.conf too. BASE_CONFIG_DN was everytime 
+  ou=ldapconfig,$BASE
+- 3.1.6
+
+-------------------------------------------------------------------
 Tue Feb 11 16:33:18 UTC 2014 - jreidinger@suse.com
 
 - add missing sysconfig ldap agent
