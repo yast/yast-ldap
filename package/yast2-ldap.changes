@@ -1,8 +1,9 @@
 -------------------------------------------------------------------
-Wed Feb 12 16:54:41 UTC 2014 - varkoly@suse.com
+Thu Feb 13 11:12:38 UTC 2014 - varkoly@suse.com
 
 - Remove not used subroutines from the Ldap module
-- bnc#863329 - Missing Ldap::Export() 
+- BNC#863329 - Missing Ldap::Export()
+- BNC#863612 YaST reports Cannot find client ldap/routines.rb
 - Simplify ldap-conf agent: Until now ldap informations was saved in 
   3 places: /etc/ldap.conf /etc/openldap/ldap.conf and the sysconfig
   file ldap. From now on only /etc/openldap/ldap.conf will be used.
