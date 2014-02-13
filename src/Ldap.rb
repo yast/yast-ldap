@@ -19,11 +19,12 @@
 # current contact information at www.novell.com.
 # ------------------------------------------------------------------------------
 
-# File:	modules/Ldap.ycp
-# Module:	Configuration of LDAP client
-# Summary:	LDAP client configuration data, I/O functions.
-# Authors:	Thorsten Kukuk <kukuk@suse.de>
-#		Anas Nashif <nashif@suse.de>
+# File:        modules/Ldap.ycp
+# Module:        Configuration of LDAP client
+# Summary:        LDAP client configuration data, I/O functions.
+# Authors:        Peter Varkoly <varkoly@suse.com>
+#               Thorsten Kukuk <kukuk@suse.de>
+#                Anas Nashif <nashif@suse.de>
 #
 # $Id$
 require "yast"
@@ -102,7 +103,7 @@ module Yast
 
       # base DN
       @base_dn = ""
-      @old_base_dn = nil
+      @old_base_dn = ""
       @base_dn_changed = false
 
       @ldap_tls = true
@@ -406,7 +407,7 @@ module Yast
     # @param [String] entry name
     # @param [String] value; if value is nil, entry will be removed
     def WriteLdapConfEntry(entry, value)
-      SCR.Write( ".ldap_conf.v." + entry, value == nil ? nil : [value] )
+      SCR.Write( ".ldap_conf.v." + entry, value.nil ? nil : [value] )
       nil
     end
 
@@ -443,7 +444,7 @@ module Yast
       current = Builtins.maplist(current) { |e| Builtins.tolower(e) }
 
       if !Builtins.contains(current, Builtins.tolower(value))
-        SCR.Write( ".ldap_conf.v." + entry, Builtins.union(current, [value]))
+        SCR.Write( ".ldap_conf.v." + entry, current | [value] )
       end
 
       nil
@@ -461,13 +462,13 @@ module Yast
         Builtins.maplist(Builtins.splitstring(uri, " \t")) do |u|
           url = URL.Parse(u)
           h = Ops.get_string(url, "host", "")
-	  p = Ops.get_string(url, "port", "")
-	  if Ops.get_string(url, "scheme","") == "ldaps"
-	     @ldap_tls = "yes"
-	  end
+          p = Ops.get_string(url, "port", "")
+          if Ops.get_string(url, "scheme","") == "ldaps"
+             @ldap_tls = "yes"
+          end
           if p != ""
-	    @ldap_tls = "yes" if( p == "636" || p == "ldaps" )
-            h = Builtins.sformat("%1:%2", h, p)
+            @ldap_tls = "yes" if( p == "636" || p == "ldaps" )
+            h = "#{h}:#{p}"
           end
           h
         end,
@@ -499,7 +500,7 @@ module Yast
 
       # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
       @start = @nsswitch["passwd"].include?("ldap") || 
-	       ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
+               ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
                ( @auth["oes"] && @nsswitch["passwd"].include?("nam") )
 
       if @start
@@ -548,7 +549,7 @@ module Yast
 
     def FindLDAPServer
       # ask DNS for LDAP server address if none is defined
-        return nil if !  FileUtils.Exists("/usr/bin/dig")
+        return nil unless FileUtils.Exists("/usr/bin/dig")
         domain = Hostname.CurrentDomain
         # workaround for bug#393951
         if domain == "" && Stage.cont
@@ -746,10 +747,7 @@ module Yast
     def GetBindDN
       if @bind_pass == nil && Builtins.size(@bind_dn) == 0
         Builtins.y2milestone("--- bind dn not read yet or empty, reading now")
-        @bind_dn = Convert.to_string(SCR.Read(path(".sysconfig.ldap.BIND_DN")))
-        if @bind_dn == nil || @bind_dn == ""
-          @bind_dn = ReadLdapConfEntry("binddn", "")
-        end
+        @bind_dn = ReadLdapConfEntry("BINDDN", "")
       end
       @bind_dn
     end
@@ -1055,7 +1053,7 @@ module Yast
         Opt(:decorated),
         VBox(
           HSpacing(40),
-	  TextEntry(Id(:bdn), Opt(:hstretch), _("BindDN"), @bind_dn ),
+          TextEntry(Id(:bdn), Opt(:hstretch), _("BindDN"), @bind_dn ),
           # password entering label
           Password(Id(:pw),   Opt(:hstretch), _("&LDAP Server Password")),
           # label
@@ -1784,8 +1782,8 @@ module Yast
     end
 
     # If a file does not + entry, add it.
-    # @param	is login allowed?
-    # @return	success?
+    # @param   is login allowed?
+    # @return  success?
     def WritePlusLine(login)
       file = "/etc/passwd"
       what = "+::::::"
@@ -2195,13 +2193,6 @@ module Yast
       nil
     end
 
-    # Set the value of restart_sshd (= restart sshd during write)
-    def RestartSSHD(restart)
-      @restart_sshd = restart
-
-      nil
-    end
-
     # Get RDN (relative distinguished name) from dn
     def get_rdn(dn)
       dn_list = Builtins.splitstring(dn, ",")
@@ -2219,7 +2210,7 @@ module Yast
     # Create DN from cn by adding base config DN
     # (Can't work in general cases!)
     def get_dn(cn)
-      Builtins.sformat("cn=%1,%2", cn, Ldap.base_config_dn)
+      Builtins.sformat("cn=%1,%2", cn, @base_config_dn)
     end
 
     # Create new DN from DN by changing leading cn value
@@ -2334,13 +2325,7 @@ module Yast
     publish :function => :SetDomain, :type => "void (string)"
     publish :function => :SetDefaults, :type => "boolean (map)"
     publish :function => :SetReadSettings, :type => "boolean (boolean)"
-    publish :function => :AutoPackages, :type => "map ()"
-    publish :function => :Set, :type => "void (map)"
-    publish :function => :Import, :type => "boolean (map)"
     publish :function => :Export, :type => "map ()"
-    publish :function => :Summary, :type => "string ()"
-    publish :function => :ShortSummary, :type => "string ()"
-    publish :function => :ReadKrb5Conf, :type => "boolean ()"
     publish :function => :ReadLdapConfEntry, :type => "string (string, string)", :private => true
     publish :function => :ReadLdapConfEntries, :type => "list <string> (string)", :private => true
     publish :function => :WriteLdapConfEntry, :type => "void (string, string)", :private => true
@@ -2403,7 +2388,11 @@ module Yast
     publish :function => :SetBindPassword, :type => "void (string)"
     publish :function => :SetAnonymous, :type => "void (boolean)"
     publish :function => :SetGUI, :type => "void (boolean)"
-    publish :function => :RestartSSHD, :type => "void (boolean)"
+    publish :function => :get_rdn, :type => "string (string)"
+    publish :function => :get_cn, :type => "string (string)"
+    publish :function => :get_dn, :type => "string (string)"
+    publish :function => :get_new_dn, :type => "string (string)"
+    publish :function => :get_string, :type => "string (string)"
   end
 
   Ldap = LdapClass.new
