@@ -1,4 +1,9 @@
 -------------------------------------------------------------------
+Thu Feb 13 13:59:06 UTC 2014 - varkoly@suse.com
+
+- Fix SCR.Reads and Writes first parameter. This must be path.
+
+-------------------------------------------------------------------
 Thu Feb 13 11:12:38 UTC 2014 - varkoly@suse.com
 
 - Remove not used subroutines from the Ldap module
