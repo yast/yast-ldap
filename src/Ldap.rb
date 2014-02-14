@@ -378,7 +378,7 @@ module Yast
     # @return entry value
     def ReadLdapConfEntry(entry, defvalue)
       value = defvalue
-      ret = SCR.Read(".ldap_conf.v."+ entry )
+      ret = SCR.Read(path(".ldap_conf.v."+ entry ))
       if ret == nil
         value = defvalue
       elsif Ops.is_list?(ret)
@@ -393,7 +393,7 @@ module Yast
     # @param [String] entry entry name
     # @return entry value
     def ReadLdapConfEntries(entry)
-      ret = SCR.Read( ".ldap_conf.v."+ entry )
+      ret = SCR.Read(path( ".ldap_conf.v."+ entry ))
       if ret == nil
         return []
       elsif Ops.is_list?(ret)
@@ -407,7 +407,7 @@ module Yast
     # @param [String] entry name
     # @param [String] value; if value is nil, entry will be removed
     def WriteLdapConfEntry(entry, value)
-      SCR.Write( ".ldap_conf.v." + entry, value.nil ? nil : [value] )
+      SCR.Write(path( ".ldap_conf.v." + entry ), value.nil ? nil : [value] ) 
       nil
     end
 
@@ -431,7 +431,7 @@ module Yast
         end
       end
       values = [Builtins.mergestring(value, " ")] if Builtins.size(current) == 0
-      SCR.Write( ".ldap_conf.v." + entry, values )
+      SCR.Write( path(".ldap_conf.v." + entry), values )
 
       nil
     end
@@ -444,7 +444,7 @@ module Yast
       current = Builtins.maplist(current) { |e| Builtins.tolower(e) }
 
       if !Builtins.contains(current, Builtins.tolower(value))
-        SCR.Write( ".ldap_conf.v." + entry, current | [value] )
+        SCR.Write( path(".ldap_conf.v." + entry), current | [value] )
       end
 
       nil
