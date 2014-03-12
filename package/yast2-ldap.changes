@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Wed Mar 12 16:22:18 UTC 2014 - varkoly@suse.com
+
+- ldap.conf is not case sensitive
+-  @ldap_tls is a string not a boolean
+- 3.1.7
+
+-------------------------------------------------------------------
 Thu Feb 13 13:59:06 UTC 2014 - varkoly@suse.com
 
 - Fix SCR.Reads and Writes first parameter. This must be path.
