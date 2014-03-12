@@ -97,7 +97,7 @@ module Yast
       # base DN
       @base_dn = ""
 
-      @ldap_tls = true
+      @ldap_tls = "no"
 
       # CA certificates for server certificate verification
       # At least one of these are required if tls_checkpeer is "yes"
@@ -482,7 +482,7 @@ module Yast
       # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
       @start = @nsswitch["passwd"].include?("ldap") || 
                ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
-               ( CheckOES && @nsswitch["passwd"].include?("nam") )
+               ( CheckOES() && @nsswitch["passwd"].include?("nam") )
 
       if @start
         # nss_ldap is used
@@ -511,6 +511,8 @@ module Yast
       @tls_cacertdir  = ReadLdapConfEntry("TLS_CACERTDIR", "")
       @bind_dn        = ReadLdapConfEntry("BINDDN","cn=Administrator," + @base_dn )
       @base_config_dn = "ou=ldapconfig," +@base_dn
+      
+      Builtins.y2milestone("Read LDAP Settings: server %1, base_dn %2, bind_dn %3, base_config_dn %4",@server, @base_dn, @bind_dn, @base_config_dn)
 
       true
     end
@@ -777,7 +779,7 @@ module Yast
       args = {
         "hostname"   => GetFirstServer(@server),
         "port"       => GetFirstPort(@server),
-        "use_tls"    => @ldap_tls ? "yes" : "no",
+        "use_tls"    => @ldap_tls,
         "cacertdir"  => @tls_cacertdir,
         "cacertfile" => @tls_cacertfile
       }
@@ -787,7 +789,7 @@ module Yast
         ret = _("Unknown error. Perhaps 'yast2-ldap' is not available.")
       else
         @ldap_initialized = init
-        @tls_when_initialized = @ldap_tls
+        @tls_when_initialized = ( @ldap_tls == "yes" )
         ret = LDAPError() if !init
       end
       ret
@@ -967,7 +969,7 @@ module Yast
         args = {
           "hostname"   => GetFirstServer(@server),
           "port"       => GetFirstPort(@server),
-          "use_tls"    => @ldap_tls ? "yes" : "no",
+          "use_tls"    => @ldap_tls,
           "cacertdir"  => @tls_cacertdir,
           "cacertfile" => @tls_cacertfile
         }
@@ -1030,6 +1032,7 @@ module Yast
     # @param anonymous if anonymous access could be allowed
     # @return password
     def GetLDAPPassword(enable_anonymous)
+      Read() if @bind_dn.empty?
       UI.OpenDialog(
         Opt(:decorated),
         VBox(
