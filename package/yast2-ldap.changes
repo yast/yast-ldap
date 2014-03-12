@@ -2,7 +2,8 @@
 Wed Mar 12 16:22:18 UTC 2014 - varkoly@suse.com
 
 - ldap.conf is not case sensitive
--  @ldap_tls is a string not a boolean
+- @ldap_tls is a string not a boolean
+- code clean up. Remove not used variables
 - 3.1.7
 
 -------------------------------------------------------------------
