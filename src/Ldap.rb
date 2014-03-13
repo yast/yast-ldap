@@ -35,10 +35,7 @@ module Yast
       Yast.import "UI"
       textdomain "ldap"
 
-      Yast.import "Autologin"
-      Yast.import "Directory"
       Yast.import "FileUtils"
-      Yast.import "DNS"
       Yast.import "Hostname"
       Yast.import "Label"
       Yast.import "Message"
@@ -47,7 +44,6 @@ module Yast
       Yast.import "Package"
       Yast.import "Pam"
       Yast.import "Popup"
-      Yast.import "ProductFeatures"
       Yast.import "Progress"
       Yast.import "Report"
       Yast.import "Service"
@@ -73,7 +69,6 @@ module Yast
 
       # Are LDAP services available via nsswitch.conf?
       @start = false
-      @old_start = false
 
       # Is NIS service available? If yes, and LDAP client will be enabled, warn
       # user (see bug #36981)
@@ -89,11 +84,9 @@ module Yast
 
       # which attribute have LDAP groups for list of members
       @member_attribute = ""
-      @old_member_attribute = ""
 
       # IP addresses of LDAP server.
       @server = ""
-      @old_server = ""
 
       # local settings modified?
       @modified = false
@@ -103,10 +96,8 @@ module Yast
 
       # base DN
       @base_dn = ""
-      @old_base_dn = ""
-      @base_dn_changed = false
 
-      @ldap_tls = true
+      @ldap_tls = "no"
 
       # CA certificates for server certificate verification
       # At least one of these are required if tls_checkpeer is "yes"
@@ -156,9 +147,6 @@ module Yast
       # DN of currently edited template
       @current_template_dn = ""
 
-      # if LDAP configuration objects should be created automaticaly
-      @create_ldap = false
-
       # if eDirectory is used as server
       @nds = false
 
@@ -169,9 +157,6 @@ module Yast
 
       # if OES is used as a client
       @oes = false
-
-      # expert ui means "server product"
-      @expert_ui = false
 
       # defaults for adding new config objects and templates
       @new_objects = {
@@ -345,9 +330,8 @@ module Yast
     # Set new LDAP base DN
     # @param [String] new_base_dn a new base DN
     def SetBaseDN(new_base_dn)
+      @base_dn_changed = true if @base_dn != new_base_dn
       @base_dn = new_base_dn
-      @base_dn_changed = true if @base_dn != @old_base_dn && @old_base_dn != ""
-
       nil
     end
 
@@ -492,16 +476,13 @@ module Yast
     # Reads LDAP settings from the SCR
     # @return success
     def Read
-      @expert_ui = ProductFeatures.GetFeature("globals", "ui_mode") == "expert"
-
-      CheckOES()
 
       ["passwd", "group", "passwd_compat", "group_compat"].each { |db| @nsswitch[db] = Nsswitch.ReadDb(db) }
 
       # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
       @start = @nsswitch["passwd"].include?("ldap") || 
                ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
-               ( @auth["oes"] && @nsswitch["passwd"].include?("nam") )
+               ( CheckOES() && @nsswitch["passwd"].include?("nam") )
 
       if @start
         # nss_ldap is used
@@ -530,6 +511,8 @@ module Yast
       @tls_cacertdir  = ReadLdapConfEntry("TLS_CACERTDIR", "")
       @bind_dn        = ReadLdapConfEntry("BINDDN","cn=Administrator," + @base_dn )
       @base_config_dn = "ou=ldapconfig," +@base_dn
+      
+      Builtins.y2milestone("Read LDAP Settings: server %1, base_dn %2, bind_dn %3, base_config_dn %4",@server, @base_dn, @bind_dn, @base_config_dn)
 
       true
     end
@@ -796,7 +779,7 @@ module Yast
       args = {
         "hostname"   => GetFirstServer(@server),
         "port"       => GetFirstPort(@server),
-        "use_tls"    => @ldap_tls ? "yes" : "no",
+        "use_tls"    => @ldap_tls,
         "cacertdir"  => @tls_cacertdir,
         "cacertfile" => @tls_cacertfile
       }
@@ -806,7 +789,7 @@ module Yast
         ret = _("Unknown error. Perhaps 'yast2-ldap' is not available.")
       else
         @ldap_initialized = init
-        @tls_when_initialized = @ldap_tls
+        @tls_when_initialized = ( @ldap_tls == "yes" )
         ret = LDAPError() if !init
       end
       ret
@@ -986,7 +969,7 @@ module Yast
         args = {
           "hostname"   => GetFirstServer(@server),
           "port"       => GetFirstPort(@server),
-          "use_tls"    => @ldap_tls ? "yes" : "no",
+          "use_tls"    => @ldap_tls,
           "cacertdir"  => @tls_cacertdir,
           "cacertfile" => @tls_cacertfile
         }
@@ -1049,6 +1032,7 @@ module Yast
     # @param anonymous if anonymous access could be allowed
     # @return password
     def GetLDAPPassword(enable_anonymous)
+      Read() if @bind_dn.empty?
       UI.OpenDialog(
         Opt(:decorated),
         VBox(
@@ -2247,19 +2231,15 @@ module Yast
     publish :variable => :required_packages, :type => "list <string>"
     publish :variable => :write_only, :type => "boolean"
     publish :variable => :start, :type => "boolean"
-    publish :variable => :old_start, :type => "boolean"
     publish :variable => :nis_available, :type => "boolean"
     publish :variable => :_autofs_allowed, :type => "boolean"
     publish :variable => :_start_autofs, :type => "boolean"
     publish :variable => :login_enabled, :type => "boolean"
     publish :variable => :member_attribute, :type => "string"
-    publish :variable => :old_member_attribute, :type => "string"
     publish :variable => :server, :type => "string"
-    publish :variable => :old_server, :type => "string"
     publish :variable => :modified, :type => "boolean"
     publish :variable => :openldap_modified, :type => "boolean"
     publish :variable => :base_dn, :type => "string", :private => true
-    publish :variable => :old_base_dn, :type => "string", :private => true
     publish :variable => :base_dn_changed, :type => "boolean", :private => true
     publish :variable => :ldap_tls, :type => "boolean"
     publish :variable => :tls_cacertdir, :type => "string"
@@ -2280,12 +2260,10 @@ module Yast
     publish :variable => :bind_dn, :type => "string"
     publish :variable => :current_module_dn, :type => "string"
     publish :variable => :current_template_dn, :type => "string"
-    publish :variable => :create_ldap, :type => "boolean"
     publish :variable => :nds, :type => "boolean"
     publish :variable => :tls_switched_off, :type => "boolean"
     publish :variable => :nds_checked, :type => "boolean", :private => true
     publish :variable => :oes, :type => "boolean", :private => true
-    publish :variable => :expert_ui, :type => "boolean", :private => true
     publish :variable => :new_objects, :type => "map"
     publish :variable => :base_template_dn, :type => "string"
     publish :variable => :ldap_modified, :type => "boolean"
