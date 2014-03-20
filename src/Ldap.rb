@@ -269,24 +269,6 @@ module Yast
       # if sssd is used instead of pam_ldap/nss_ldap (fate#308902)
       @sssd = true
 
-      # enable/disable offline authentication ('cache_credentials' key)
-      @sssd_cache_credentials = false
-
-      # if kerberos should be set up for sssd
-      @sssd_with_krb = false
-
-      # Kerberos default realm (for sssd)
-      @krb5_realm = ""
-
-      # adress of KDC (key distribution centre) server for default realm
-      @krb5_kdcip = ""
-
-      # ldap_schema argument of /etc/sssd/sssd.conf
-      @sssd_ldap_schema = "rfc2307bis"
-
-      # enumerate users/group
-      @sssd_enumerate = false
-
       @ldap_error_hints = {
         # hint to error message
         -1  => _(
@@ -477,34 +459,7 @@ module Yast
     # @return success
     def Read
 
-      ["passwd", "group", "passwd_compat", "group_compat"].each { |db| @nsswitch[db] = Nsswitch.ReadDb(db) }
-
-      # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
-      @start = @nsswitch["passwd"].include?("ldap") || 
-               ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
-               ( CheckOES() && @nsswitch["passwd"].include?("nam") )
-
-      if @start
-        # nss_ldap is used
-        @sssd = false
-      else
-        # ... or as 'sssd'
-        @sssd  = @nsswitch["passwd"].include?("sss")
-        @start = @sssd
-      end
-
-      # nothing is configured, but some packages are installed
-      if !@start && Package.InstalledAll(@pam_nss_packages) &&
-          !Package.InstalledAll(@sssd_packages)
-        @sssd = false
-      end
-
-      @nis_available = @nsswitch["passwd"].include?("nis") ||
-                     ( @nsswitch["passwd"].include?("compat") && 
-                        @nsswitch["passwd_compat"].include?("nis") ||
-                        @nsswitch["passwd_compat"].empty? )
-      @nis_available = @nis_available && Service.Status("ypbind") == 0
-
+      @start          = passwd.include?("sss")
       @server         = ReadLdapHosts()
       @base_dn        = ReadLdapConfEntry("BASE", "")
       @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
@@ -2288,12 +2243,8 @@ module Yast
     publish :variable => :sssd_packages, :type => "list <string>"
     publish :variable => :kerberos_packages, :type => "list <string>"
     publish :variable => :sssd, :type => "boolean"
-    publish :variable => :sssd_cache_credentials, :type => "boolean"
-    publish :variable => :sssd_with_krb, :type => "boolean"
     publish :variable => :krb5_realm, :type => "string"
     publish :variable => :krb5_kdcip, :type => "string"
-    publish :variable => :sssd_ldap_schema, :type => "string"
-    publish :variable => :sssd_enumerate, :type => "boolean"
     publish :variable => :ldap_error_hints, :type => "map"
     publish :function => :BaseDNChanged, :type => "boolean ()"
     publish :function => :DomainChanged, :type => "boolean ()"
