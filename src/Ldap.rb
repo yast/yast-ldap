@@ -254,17 +254,11 @@ module Yast
       # if /etc/passwd was read
       @passwd_read = false
 
-      # if pam_mkhomedir is set in /etc/pam.d/commond-session
-      @mkhomedir = false
-
       # packages needed for pam_ldap/nss_ldap configuration
       @pam_nss_packages = ["pam_ldap", "nss_ldap"]
 
       # packages needed for sssd configuration
       @sssd_packages = ["sssd"]
-
-      # packages needed for sssd + kerberos configuration
-      @kerberos_packages = ["krb5-client"]
 
       # if sssd is used instead of pam_ldap/nss_ldap (fate#308902)
       @sssd = true
@@ -459,7 +453,7 @@ module Yast
     # @return success
     def Read
 
-      @start          = Nswitch.ReadDb("passwd").include?("sss")
+      @start          = Nsswitch.ReadDb("passwd").include?("sss")
       @server         = ReadLdapHosts()
       @base_dn        = ReadLdapConfEntry("BASE", "")
       @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
@@ -2238,13 +2232,9 @@ module Yast
     publish :variable => :read_settings, :type => "boolean"
     publish :variable => :restart_sshd, :type => "boolean"
     publish :variable => :passwd_read, :type => "boolean", :private => true
-    publish :variable => :mkhomedir, :type => "boolean"
     publish :variable => :pam_nss_packages, :type => "list <string>"
     publish :variable => :sssd_packages, :type => "list <string>"
-    publish :variable => :kerberos_packages, :type => "list <string>"
     publish :variable => :sssd, :type => "boolean"
-    publish :variable => :krb5_realm, :type => "string"
-    publish :variable => :krb5_kdcip, :type => "string"
     publish :variable => :ldap_error_hints, :type => "map"
     publish :function => :BaseDNChanged, :type => "boolean ()"
     publish :function => :DomainChanged, :type => "boolean ()"
