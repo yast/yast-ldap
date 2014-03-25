@@ -459,7 +459,7 @@ module Yast
     # @return success
     def Read
 
-      @start          = passwd.include?("sss")
+      @start          = Nswitch.ReadDb("passwd").include?("sss")
       @server         = ReadLdapHosts()
       @base_dn        = ReadLdapConfEntry("BASE", "")
       @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
