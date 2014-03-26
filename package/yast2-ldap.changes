@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Mar 26 14:16:45 UTC 2014 - varkoly@suse.com
+
+- Remove some not used variables and functiones
+- 3.1.9 
+
+-------------------------------------------------------------------
 Thu Mar 20 17:20:00 UTC 2014 - varkoly@suse.com
 
 - bnc#865812 - can't configure ldap login
