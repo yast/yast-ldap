@@ -1,4 +1,16 @@
 -------------------------------------------------------------------
+Wed Mar 26 14:16:45 UTC 2014 - varkoly@suse.com
+
+- Remove some not used variables and functions
+- 3.1.9 
+
+-------------------------------------------------------------------
+Thu Mar 20 17:20:00 UTC 2014 - varkoly@suse.com
+
+- bnc#865812 - can't configure ldap login
+- 3.1.8 
+
+-------------------------------------------------------------------
 Wed Mar 12 16:22:18 UTC 2014 - varkoly@suse.com
 
 - ldap.conf is not case sensitive

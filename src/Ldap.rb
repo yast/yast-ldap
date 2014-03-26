@@ -115,23 +115,7 @@ module Yast
       @default_port = 389
 
       # If home directories of LDAP users are stored on this machine
-      @file_server = false
-
-      # settings from ldap.conf
-      @nss_base_passwd = ""
-      @nss_base_shadow = ""
-      @nss_base_group = ""
-      # settings from LDAP configuration objects
-      @user_base = ""
-      @group_base = ""
-
-      # stored values of /etc/nsswitch.conf
-      @nsswitch = {
-        "passwd"        => [],
-        "group"         => [],
-        "passwd_compat" => [],
-        "group_compat"  => []
-      }
+      @file_server = true
 
       # are we binding anonymously?
       @anonymous = false
@@ -254,38 +238,14 @@ module Yast
       # if /etc/passwd was read
       @passwd_read = false
 
-      # if pam_mkhomedir is set in /etc/pam.d/commond-session
-      @mkhomedir = false
-
       # packages needed for pam_ldap/nss_ldap configuration
       @pam_nss_packages = ["pam_ldap", "nss_ldap"]
 
       # packages needed for sssd configuration
       @sssd_packages = ["sssd"]
 
-      # packages needed for sssd + kerberos configuration
-      @kerberos_packages = ["krb5-client"]
-
       # if sssd is used instead of pam_ldap/nss_ldap (fate#308902)
       @sssd = true
-
-      # enable/disable offline authentication ('cache_credentials' key)
-      @sssd_cache_credentials = false
-
-      # if kerberos should be set up for sssd
-      @sssd_with_krb = false
-
-      # Kerberos default realm (for sssd)
-      @krb5_realm = ""
-
-      # adress of KDC (key distribution centre) server for default realm
-      @krb5_kdcip = ""
-
-      # ldap_schema argument of /etc/sssd/sssd.conf
-      @sssd_ldap_schema = "rfc2307bis"
-
-      # enumerate users/group
-      @sssd_enumerate = false
 
       @ldap_error_hints = {
         # hint to error message
@@ -477,34 +437,7 @@ module Yast
     # @return success
     def Read
 
-      ["passwd", "group", "passwd_compat", "group_compat"].each { |db| @nsswitch[db] = Nsswitch.ReadDb(db) }
-
-      # 'start' means that LDAP is present in nsswitch somehow... either as 'compat'/'ldap'...
-      @start = @nsswitch["passwd"].include?("ldap") || 
-               ( @nsswitch["passwd"].include?("compat") && @nsswitch["passwd_compat"].include?("ldap") ) ||
-               ( CheckOES() && @nsswitch["passwd"].include?("nam") )
-
-      if @start
-        # nss_ldap is used
-        @sssd = false
-      else
-        # ... or as 'sssd'
-        @sssd  = @nsswitch["passwd"].include?("sss")
-        @start = @sssd
-      end
-
-      # nothing is configured, but some packages are installed
-      if !@start && Package.InstalledAll(@pam_nss_packages) &&
-          !Package.InstalledAll(@sssd_packages)
-        @sssd = false
-      end
-
-      @nis_available = @nsswitch["passwd"].include?("nis") ||
-                     ( @nsswitch["passwd"].include?("compat") && 
-                        @nsswitch["passwd_compat"].include?("nis") ||
-                        @nsswitch["passwd_compat"].empty? )
-      @nis_available = @nis_available && Service.Status("ypbind") == 0
-
+      @start          = Nsswitch.ReadDb("passwd").include?("sss")
       @server         = ReadLdapHosts()
       @base_dn        = ReadLdapConfEntry("BASE", "")
       @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
@@ -1442,110 +1375,6 @@ module Yast
       []
     end
 
-    # Creates default new map for a new object template
-    # @param [String] cn cn of new template
-    # @param [Array<String>] classes object classes of the object the template will belong to
-    # @return template map
-    def CreateTemplate(cn, classes)
-      classes = deep_copy(classes)
-      obj = { "cn" => [cn], "modified" => "added" }
-      classes = Builtins.maplist(classes) { |c| Builtins.tolower(c) }
-      if Builtins.contains(classes, "suseuserconfiguration")
-        obj = Builtins.union(
-          obj,
-          Ops.get_map(@new_objects, "suseUserTemplate", {})
-        )
-      elsif Builtins.contains(classes, "susegroupconfiguration")
-        obj = Builtins.union(
-          obj,
-          Ops.get_map(@new_objects, "suseGroupTemplate", {})
-        )
-      else
-        Ops.set(obj, "objectClass", ["top", "suseObjectTemplate"])
-      end
-
-      obj = ConvertDefaultValues(obj)
-      AddMissingAttributes(obj)
-    end
-
-    # Creates default new map for new configuration object
-    # @param [String] class additional objectClass of new module (e.g.userConfiguration)
-    # @return new module map
-    def CreateModule(cn, _class)
-      obj = {
-        "cn"          => [cn],
-        "objectClass" => Builtins.add(
-          ["top", "suseModuleConfiguration"],
-          _class
-        ),
-        "modified"    => "added"
-      }
-      # create some good defaults
-      obj = Builtins.union(obj, Ops.get_map(@new_objects, _class, {}))
-      templs = []
-      templ_cn = ""
-      default_base = ""
-      if Builtins.tolower(_class) == "suseuserconfiguration"
-        Builtins.foreach(
-          Convert.convert(
-            @templates,
-            :from => "map",
-            :to   => "map <string, map <string, any>>"
-          )
-        ) do |dn, t|
-          cls = Builtins.maplist(Ops.get_list(t, "objectClass", [])) do |c|
-            Builtins.tolower(c)
-          end
-          if Builtins.contains(cls, "suseusertemplate")
-            templs = Builtins.add(templs, dn)
-          end
-        end
-        templ_cn = "usertemplate" if templs == []
-        default_base = Builtins.sformat("ou=people,%1", @base_dn)
-
-        # for eDirectory, we have to use cleartext passwords!
-        if @nds &&
-            Builtins.tolower(Ops.get_string(obj, ["susePasswordHash", 0], "")) != "clear"
-          Ops.set(obj, "susePasswordHash", ["clear"])
-        end
-      end
-      if Builtins.tolower(_class) == "susegroupconfiguration"
-        Builtins.foreach(
-          Convert.convert(
-            @templates,
-            :from => "map",
-            :to   => "map <string, map <string, any>>"
-          )
-        ) do |dn, t|
-          cls = Builtins.maplist(Ops.get_list(t, "objectClass", [])) do |c|
-            Builtins.tolower(c)
-          end
-          if Builtins.contains(cls, "susegrouptemplate")
-            templs = Builtins.add(templs, dn)
-          end
-        end
-        templ_cn = "grouptemplate" if templs == []
-        default_base = Builtins.sformat("ou=group,%1", @base_dn)
-      end
-      # create proposal for defaultTemplate DN
-      if templ_cn != ""
-        tdn = Builtins.sformat("cn=%1,%2", templ_cn, @base_config_dn)
-        i = 0
-        while Ops.greater_than(Builtins.size(GetLDAPEntry(tdn)), 0)
-          tdn = Builtins.sformat("cn=%1%2,%3", templ_cn, i, @base_config_dn)
-          i = Ops.add(i, 1)
-        end
-        templs = [tdn]
-      end
-      Ops.set(obj, "suseDefaultTemplate", templs)
-      Ops.set(obj, "suseDefaultBase", [default_base])
-      Convert.convert(
-        AddMissingAttributes(obj),
-        :from => "map",
-        :to   => "map <string, any>"
-      )
-    end
-
     # Searches for DN's of all objects defined by filter in given base ("sub")
     # @param [String] base search base
     # @param [String] search_filter if filter is empty, "objectClass=*" is used
@@ -1579,93 +1408,6 @@ module Yast
     def GetGroupsDN(base)
       @groups_dn = ReadDN(base, "objectClass=posixGroup") if @groups_dn == []
       deep_copy(@groups_dn)
-    end
-
-    # Check if given DN exist and if it points to some template
-    # @param [String] dn
-    # @return empty map if DN don't exist, template map if DN points
-    #  to template object, nil if object with given DN is not template
-    def CheckTemplateDN(dn)
-      object = GetLDAPEntry(dn)
-      return nil if object == nil
-      if object == {}
-        # OK, does not exist
-        return {}
-      end
-      cls = Builtins.maplist(Ops.get_list(object, "objectClass", [])) do |c|
-        Builtins.tolower(c)
-      end
-      if Builtins.contains(cls, "suseobjecttemplate")
-        # exists as a template -> return object
-        object = ConvertDefaultValues(object)
-        Ops.set(object, "modified", "edited")
-        return AddMissingAttributes(object)
-      else
-        # error message
-        Popup.Error(
-          _(
-            "An object with the selected DN exists, but it is not a template object.\nSelect another one.\n"
-          )
-        )
-        return nil
-      end
-    end
-
-    # Save the edited map of configuration modules to global map
-    def CommitConfigModules(modules)
-      modules = deep_copy(modules)
-      Builtins.foreach(
-        Convert.convert(modules, :from => "map", :to => "map <string, map>")
-      ) do |dn, modmap|
-        if !Builtins.haskey(@config_modules, dn)
-          Ops.set(@config_modules, dn, Builtins.eval(modmap))
-          @ldap_modified = true
-          next
-        end
-        # 'val' can be list (most time), map (default_values), string
-        Builtins.foreach(
-          Convert.convert(modmap, :from => "map", :to => "map <string, any>")
-        ) do |attr, val|
-          if Ops.get(@config_modules, [dn, attr]) != val
-            Ops.set(@config_modules, [dn, attr], val)
-            if !Builtins.haskey(modmap, "modified")
-              Ops.set(@config_modules, [dn, "modified"], "edited")
-            end
-            @ldap_modified = true
-            Builtins.y2debug("modified value: %1", val)
-          end
-        end
-      end
-      true
-    end
-
-    # Save the edited map of templates to global map
-    def CommitTemplates(templs)
-      templs = deep_copy(templs)
-      Builtins.foreach(
-        Convert.convert(templs, :from => "map", :to => "map <string, map>")
-      ) do |dn, template|
-        if !Builtins.haskey(@templates, dn)
-          # dn changed
-          Ops.set(@templates, dn, Builtins.eval(template))
-          @ldap_modified = true
-          next
-        end
-        # 'val' can be list (most time), map (default_values), string
-        Builtins.foreach(
-          Convert.convert(template, :from => "map", :to => "map <string, any>")
-        ) do |attr, val|
-          if Ops.get(@templates, [dn, attr]) != val
-            Ops.set(@templates, [dn, attr], val)
-            if !Builtins.haskey(template, "modified")
-              Ops.set(@templates, [dn, "modified"], "edited")
-            end
-            @ldap_modified = true
-            Builtins.y2debug("modified value: %1", val)
-          end
-        end
-      end
-      true
     end
 
     # Writes map of objects to LDAP
@@ -1842,241 +1584,6 @@ module Yast
       end
 
       nil
-    end
-
-    # Check if references to other objects are correct;
-    # create these objects if possible
-    def CheckOrderOfCreation
-      Builtins.foreach(
-        Convert.convert(
-          @config_modules,
-          :from => "map",
-          :to   => "map <string, map>"
-        )
-      ) do |dn, m|
-        # 1. create suseDefaultBase object if not present
-        base_dn = Ops.get_string(m, ["suseDefaultBase", 0], "")
-        if base_dn != ""
-          object = GetLDAPEntry(base_dn)
-          if object == nil
-            Builtins.y2warning("reference to nothing? (%1)", base_dn)
-            Ops.set(@config_modules, dn, Builtins.remove(m, "suseDefaultBase"))
-          elsif object == {}
-            default_base = {
-              "objectClass" => ["top", "organizationalUnit"],
-              "modified"    => "added",
-              "ou"          => get_cn(base_dn)
-            }
-            if @nds
-              Ops.set(
-                default_base,
-                "acl",
-                [
-                  "3#subtree#[Public]#[All Attributes Rights]",
-                  "1#subtree#[Public]#[Entry Rights]"
-                ]
-              )
-            end
-            if !ParentExists(base_dn) || !WriteLDAP({ base_dn => default_base })
-              Builtins.y2error("%1 cannot be created", base_dn)
-              Ops.set(
-                @config_modules,
-                dn,
-                Builtins.remove(m, "suseDefaultBase")
-              )
-            end
-          end
-        end
-        # 2. empty template must be created when there is a reference
-        template_dn = Ops.get_string(m, ["suseDefaultTemplate", 0], "")
-        if template_dn != "" && !Builtins.haskey(@templates, template_dn)
-          object = GetLDAPEntry(template_dn)
-          if Builtins.size(object) == 0
-            Builtins.y2milestone("template does not exist, creating default...")
-            t_class = Builtins.contains(
-              Ops.get_list(m, "objectClass", []),
-              "suseGroupConfiguration"
-            ) ?
-              "suseGroupTemplate" :
-              "suseUserTemplate"
-            template = { "modified" => "added", "cn" => get_cn(template_dn) }
-            template = Builtins.union(
-              template,
-              Ops.get_map(@new_objects, t_class, {})
-            )
-            if !ParentExists(template_dn) ||
-                !WriteLDAP({ template_dn => template })
-              Builtins.y2error("%1 cannot be created", template_dn)
-              Ops.set(
-                @config_modules,
-                dn,
-                Builtins.remove(m, "suseDefaultTemplate")
-              )
-            end
-          end
-        end
-      end
-
-      # 3. check references to secondary groups in templates
-      Builtins.foreach(
-        Convert.convert(@templates, :from => "map", :to => "map <string, map>")
-      ) do |dn, m|
-        groups = Ops.get_list(m, "suseSecondaryGroup", [])
-        if Ops.greater_than(Builtins.size(groups), 0)
-          new_groups = []
-          Builtins.foreach(
-            Convert.convert(groups, :from => "list", :to => "list <string>")
-          ) do |group|
-            object = GetLDAPEntry(group)
-            if object == nil || object == {}
-              Builtins.y2warning("no such group %1;removing reference", group)
-            else
-              new_groups = Builtins.add(new_groups, group)
-            end
-          end
-          Ops.set(m, "suseSecondaryGroup", new_groups)
-        end
-      end
-      true
-    end
-
-    # create the default objects for users and groups
-    def CreateDefaultLDAPConfiguration
-      msg = ""
-      if !@ldap_initialized
-        msg = LDAPInit()
-        if msg != ""
-          LDAPErrorMessage("init", msg)
-          return false
-        end
-      end
-      if !@schema_initialized
-        msg = InitSchema()
-        LDAPErrorMessage("schema", msg) if msg != ""
-      end
-      if @bind_pass != nil && !@bound
-        msg = LDAPBind(@bind_pass)
-        if msg != ""
-          LDAPErrorMessage("bind", msg)
-          @bind_pass = nil
-        end
-      end
-      # create base configuration object
-      object = GetLDAPEntry(@base_config_dn)
-      return false if object == nil
-      if object == {}
-        if ParentExists(@base_config_dn)
-          config_object = {
-            "objectClass" => ["top", "organizationalUnit"],
-            "modified"    => "added",
-            "ou"          => get_cn(@base_config_dn)
-          }
-          if @nds
-            Ops.set(
-              config_object,
-              "acl",
-              [
-                "3#subtree#[Public]#[All Attributes Rights]",
-                "1#subtree#[Public]#[Entry Rights]"
-              ]
-            )
-          end
-          if !WriteLDAP({ @base_config_dn => config_object })
-            Builtins.y2error("%1 cannot be created", @base_config_dn)
-          end
-        end 
-        #TODO fail?
-      end
-
-      modules = {}
-      templs = {}
-      user_dn = get_dn("userconfiguration")
-      group_dn = get_dn("groupconfiguration")
-
-      ReadConfigModules() if @config_modules == {}
-
-      # check which objects already exist...
-      Builtins.foreach(
-        Convert.convert(
-          @config_modules,
-          :from => "map",
-          :to   => "map <string, map>"
-        )
-      ) do |dn, m|
-        cl = Builtins.maplist(Ops.get_list(m, "objectClass", [])) do |c|
-          Builtins.tolower(c)
-        end
-        user_dn = dn if Builtins.contains(cl, "suseuserconfiguration")
-        group_dn = dn if Builtins.contains(cl, "susegroupconfiguration")
-      end
-
-      # create user configuration object
-      if Ops.get_map(@config_modules, user_dn, {}) == {} &&
-          GetLDAPEntry(user_dn) == {}
-        Ops.set(
-          modules,
-          user_dn,
-          CreateModule(get_cn(user_dn), "suseUserConfiguration")
-        )
-      end
-
-      # create group configuration object
-      if Ops.get_map(@config_modules, group_dn, {}) == {} &&
-          GetLDAPEntry(group_dn) == {}
-        Ops.set(
-          modules,
-          group_dn,
-          CreateModule(get_cn(group_dn), "suseGroupConfiguration")
-        )
-      end
-
-      CommitConfigModules(modules)
-      modules = GetConfigModules()
-      update_modules = false
-
-      # create user template...
-      template_dn = get_string(
-        Ops.get_map(modules, user_dn, {}),
-        "suseDefaultTemplate"
-      )
-      if Ops.get_list(modules, [user_dn, "suseDefaultTemplate"], []) == []
-        template_dn = Ops.add("cn=usertemplate,", @base_config_dn)
-        Ops.set(modules, [user_dn, "suseDefaultTemplate"], [template_dn])
-        update_modules = true
-      end
-
-      if Ops.get_map(@templates, template_dn, {}) == {} &&
-          GetLDAPEntry(template_dn) == {}
-        Ops.set(
-          templs,
-          template_dn,
-          CreateTemplate(get_cn(template_dn), ["suseUserConfiguration"])
-        )
-      end
-
-      # group template...
-      template_dn = get_string(
-        Ops.get_map(modules, group_dn, {}),
-        "suseDefaultTemplate"
-      )
-      if Ops.get_list(modules, [group_dn, "suseDefaultTemplate"], []) == []
-        template_dn = Ops.add("cn=grouptemplate,", @base_config_dn)
-        Ops.set(modules, [group_dn, "suseDefaultTemplate"], [template_dn])
-        update_modules = true
-      end
-
-      if Ops.get_map(@templates, template_dn, {}) == {} &&
-          GetLDAPEntry(template_dn) == {}
-        Ops.set(
-          templs,
-          template_dn,
-          CreateTemplate(get_cn(template_dn), ["suseGroupConfiguration"])
-        )
-      end
-
-      CommitConfigModules(modules) if update_modules
-      CommitTemplates(templs)
-      true
     end
 
     # Check the server if it is NDS (novell directory service)
@@ -2283,17 +1790,9 @@ module Yast
     publish :variable => :read_settings, :type => "boolean"
     publish :variable => :restart_sshd, :type => "boolean"
     publish :variable => :passwd_read, :type => "boolean", :private => true
-    publish :variable => :mkhomedir, :type => "boolean"
     publish :variable => :pam_nss_packages, :type => "list <string>"
     publish :variable => :sssd_packages, :type => "list <string>"
-    publish :variable => :kerberos_packages, :type => "list <string>"
     publish :variable => :sssd, :type => "boolean"
-    publish :variable => :sssd_cache_credentials, :type => "boolean"
-    publish :variable => :sssd_with_krb, :type => "boolean"
-    publish :variable => :krb5_realm, :type => "string"
-    publish :variable => :krb5_kdcip, :type => "string"
-    publish :variable => :sssd_ldap_schema, :type => "string"
-    publish :variable => :sssd_enumerate, :type => "boolean"
     publish :variable => :ldap_error_hints, :type => "map"
     publish :function => :BaseDNChanged, :type => "boolean ()"
     publish :function => :DomainChanged, :type => "boolean ()"
@@ -2347,18 +1846,11 @@ module Yast
     publish :function => :GetConfigModules, :type => "map ()"
     publish :function => :GetTemplates, :type => "map ()"
     publish :function => :GetDefaultObjectClasses, :type => "list (map)"
-    publish :function => :CreateTemplate, :type => "map (string, list <string>)"
-    publish :function => :CreateModule, :type => "map <string, any> (string, string)"
     publish :function => :ReadDN, :type => "list <string> (string, string)"
     publish :function => :GetGroupsDN, :type => "list (string)"
-    publish :function => :CheckTemplateDN, :type => "map (string)"
-    publish :function => :CommitConfigModules, :type => "boolean (map)"
-    publish :function => :CommitTemplates, :type => "boolean (map)"
     publish :function => :WriteToLDAP, :type => "map (map)"
     publish :function => :WriteLDAP, :type => "boolean (map)"
     publish :function => :WritePlusLine, :type => "boolean (boolean)"
-    publish :function => :CheckOrderOfCreation, :type => "boolean ()"
-    publish :function => :CreateDefaultLDAPConfiguration, :type => "boolean ()", :private => true
     publish :function => :CheckNDS, :type => "boolean ()"
     publish :function => :Write, :type => "symbol (block <boolean>)"
     publish :function => :WriteNow, :type => "boolean ()"
