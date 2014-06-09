@@ -369,11 +369,13 @@ module Yast
                 PushButton(Id(:cancel), Opt(:key_F9), Label.CancelButton),
                 PushButton(Id(:help), Opt(:key_F2), Label.HelpButton)
               ) :
-              ButtonBox(
-                PushButton(Id(:ok), Opt(:default, :key_F10), Label.OKButton),
-                PushButton(Id(:cancel), Opt(:key_F9), Label.CancelButton),
-                PushButton(Id(:help), Opt(:key_F2), Label.HelpButton),
-                add_button
+              HBox(
+                add_button,
+                ButtonBox(
+                  PushButton(Id(:ok), Opt(:default, :key_F10), Label.OKButton),
+                  PushButton(Id(:cancel), Opt(:key_F9), Label.CancelButton),
+                  PushButton(Id(:help), Opt(:key_F2), Label.HelpButton)
+                )
               )
           ),
           HSpacing(1)
