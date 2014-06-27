@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Jun 11 13:26:04 UTC 2014 - varkoly@suse.com
+
+- Do not add MenuButton to ButtonBox
+- 3.1.10
+
+-------------------------------------------------------------------
 Wed Mar 26 14:16:45 UTC 2014 - varkoly@suse.com
 
 - Remove some not used variables and functions
