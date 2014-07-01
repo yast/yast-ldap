@@ -96,7 +96,7 @@ module Yast
       Ldap.Read
 
       @configurations = []
-      @configurations_file = Ops.add(Directory.vardir, "/ldap_servers.ycp")
+      @configurations_file = Directory.vardir + "/ldap_servers.ycp"
       # combobox item
       @default_name = _("Current LDAP Client settings")
       @configuration = {
