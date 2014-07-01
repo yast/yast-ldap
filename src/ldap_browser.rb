@@ -96,7 +96,7 @@ module Yast
       Ldap.Read
 
       @configurations = []
-      @configurations_file.push("/ldap_servers.ycp")
+      @configurations_file = Ops.add(Directory.vardir, "/ldap_servers.ycp")
       # combobox item
       @default_name = _("Current LDAP Client settings")
       @configuration = {
@@ -159,7 +159,7 @@ module Yast
               CheckBox(
                 Id("ldap_tls"),
                 Opt(:notify),
-                _("L&DAP TLS"),@configuration["ldap_tls"]
+                _("L&DAP TLS"),["yes", "true"].include?(@configuration["ldap_tls"])
               )
             ),
             ButtonBox(
