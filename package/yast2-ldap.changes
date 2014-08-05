@@ -1,4 +1,13 @@
 -------------------------------------------------------------------
+Tue Aug  5 10:55:05 UTC 2014 - ancor@suse.com
+
+- Reimplemented reading of /etc/ldap.conf and, thus, proper
+  implementation of Ldap->member_attribute (since this is still
+  used in other modules).
+- Fixed bnc#889556
+- 3.1.12
+
+-------------------------------------------------------------------
 Tue Jul  1 09:47:36 UTC 2014 - ckornacker@suse.com
 
 - don't call deprecated methods in ldap_browser (bnc#885227)
