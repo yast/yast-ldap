@@ -444,6 +444,7 @@ module Yast
       @tls_cacertdir  = ReadLdapConfEntry("TLS_CACERTDIR", "")
       @bind_dn        = ReadLdapConfEntry("BINDDN","cn=Administrator," + @base_dn )
       @base_config_dn = "ou=ldapconfig," +@base_dn
+      @member_attribute = read_member_attribute
       
       Builtins.y2milestone("Read LDAP Settings: server %1, base_dn %2, bind_dn %3, base_config_dn %4",@server, @base_dn, @bind_dn, @base_config_dn)
 
@@ -1863,6 +1864,21 @@ module Yast
     publish :function => :get_dn, :type => "string (string)"
     publish :function => :get_new_dn, :type => "string (string)"
     publish :function => :get_string, :type => "string (string)"
+
+  private
+
+    # Value of the NSS mapping for uniqueMember, read from /etc/ldap.conf
+    #
+    # @return [String] name of the attribute or empty string
+    def read_member_attribute
+      map_attr = SCR.Read(path(".nss_ldap_conf.v.nss_map_attribute" ))
+      # Ensure map_attr is a proper array
+      map_attr = [map_attr].flatten.compact
+      member_entry = map_attr.detect do |entry|
+        entry.split(/\s/).first =~ /^uniquemember$/i
+      end
+      member_entry ? member_entry.split(/\s/)[1] : ""
+    end
   end
 
   Ldap = LdapClass.new
