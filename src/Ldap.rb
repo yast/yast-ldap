@@ -83,7 +83,7 @@ module Yast
       @login_enabled = true
 
       # which attribute have LDAP groups for list of members
-      @member_attribute = ""
+      @member_attribute = "member"
 
       # IP addresses of LDAP server.
       @server = ""

@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Tue Aug  5 13:02:04 UTC 2014 - varkoly@suse.com
+
+- Set member_attribute to 'member'. We only use rfc2307bis.schema
+- bnc#889556 - yast2 users can not create ldap groups
+- 3.1.12  
+
+-------------------------------------------------------------------
 Tue Jul  1 09:47:36 UTC 2014 - ckornacker@suse.com
 
 - don't call deprecated methods in ldap_browser (bnc#885227)
