@@ -26,10 +26,16 @@ INCLUDES = -I$(includedir)
 
 module_DATA =		\
   LdapServerAccess.pm \
-  LdapPopup.rb  Ldap.rb
+  LdapPopup.rb  \
+  Ldap.rb
 
 client_DATA = \
-  ldap_browser.rb 
+  ldap_browser.rb \
+  ldap_config.rb
 
-EXTRA_DIST = $(module_DATA) $(client_DATA)
+ynclude_DATA = \
+  routines.rb \
+  ui.rb
+
+EXTRA_DIST = $(module_DATA) $(client_DATA) $(ynclude_DATA)
 

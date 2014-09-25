@@ -1410,6 +1410,93 @@ module Yast
       deep_copy(@groups_dn)
     end
 
+    # Check if given DN exist and if it points to some template
+    # @param [String] dn
+    # @return empty map if DN don't exist, template map if DN points
+    #  to template object, nil if object with given DN is not template
+    def CheckTemplateDN(dn)
+      object = GetLDAPEntry(dn)
+      return nil if object == nil
+      if object == {}
+        # OK, does not exist
+        return {}
+      end
+      cls = Builtins.maplist(Ops.get_list(object, "objectClass", [])) do |c|
+        Builtins.tolower(c)
+      end
+      if Builtins.contains(cls, "suseobjecttemplate")
+        # exists as a template -> return object
+        object = ConvertDefaultValues(object)
+        Ops.set(object, "modified", "edited")
+        return AddMissingAttributes(object)
+      else
+        # error message
+        Popup.Error(
+          _(
+            "An object with the selected DN exists, but it is not a template object.\nSelect another one.\n"
+          )
+        )
+        return nil
+      end
+    end
+
+    # Save the edited map of configuration modules to global map
+    def CommitConfigModules(modules)
+      modules = deep_copy(modules)
+      Builtins.foreach(
+        Convert.convert(modules, :from => "map", :to => "map <string, map>")
+      ) do |dn, modmap|
+        if !Builtins.haskey(@config_modules, dn)
+          Ops.set(@config_modules, dn, Builtins.eval(modmap))
+          @ldap_modified = true
+          next
+        end
+        # 'val' can be list (most time), map (default_values), string
+        Builtins.foreach(
+          Convert.convert(modmap, :from => "map", :to => "map <string, any>")
+        ) do |attr, val|
+          if Ops.get(@config_modules, [dn, attr]) != val
+            Ops.set(@config_modules, [dn, attr], val)
+            if !Builtins.haskey(modmap, "modified")
+              Ops.set(@config_modules, [dn, "modified"], "edited")
+            end
+            @ldap_modified = true
+            Builtins.y2debug("modified value: %1", val)
+          end
+        end
+      end
+      true
+    end
+
+    # Save the edited map of templates to global map
+    def CommitTemplates(templs)
+      templs = deep_copy(templs)
+      Builtins.foreach(
+        Convert.convert(templs, :from => "map", :to => "map <string, map>")
+      ) do |dn, template|
+        if !Builtins.haskey(@templates, dn)
+          # dn changed
+          Ops.set(@templates, dn, Builtins.eval(template))
+          @ldap_modified = true
+          next
+        end
+        # 'val' can be list (most time), map (default_values), string
+        Builtins.foreach(
+          Convert.convert(template, :from => "map", :to => "map <string, any>")
+        ) do |attr, val|
+          if Ops.get(@templates, [dn, attr]) != val
+            Ops.set(@templates, [dn, attr], val)
+            if !Builtins.haskey(template, "modified")
+              Ops.set(@templates, [dn, "modified"], "edited")
+            end
+            @ldap_modified = true
+            Builtins.y2debug("modified value: %1", val)
+          end
+        end
+      end
+      true
+    end
+
     # Writes map of objects to LDAP
     # @param [Hash] objects map of objects to write. It is in the form:
     # $[ DN: (map) attribute_values]
@@ -1848,6 +1935,9 @@ module Yast
     publish :function => :GetDefaultObjectClasses, :type => "list (map)"
     publish :function => :ReadDN, :type => "list <string> (string, string)"
     publish :function => :GetGroupsDN, :type => "list (string)"
+    publish :function => :CheckTemplateDN, :type => "map (string)"
+    publish :function => :CommitConfigModules, :type => "boolean (map)"
+    publish :function => :CommitTemplates, :type => "boolean (map)"
     publish :function => :WriteToLDAP, :type => "map (map)"
     publish :function => :WriteLDAP, :type => "boolean (map)"
     publish :function => :WritePlusLine, :type => "boolean (boolean)"
