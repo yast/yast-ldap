@@ -33,6 +33,7 @@ client_DATA = \
   ldap_browser.rb \
   ldap_config.rb
 
+yncludedir = @yncludedir@/ldap
 ynclude_DATA = \
   routines.rb \
   ui.rb
