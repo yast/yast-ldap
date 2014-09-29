@@ -1412,15 +1412,11 @@ module Yast
 
     # Check if given DN exist and if it points to some template
     # @param [String] dn
-    # @return empty map if DN don't exist, template map if DN points
+    # @return [Hash,nil] empty map if DN don't exist, template map if DN points
     #  to template object, nil if object with given DN is not template
     def CheckTemplateDN(dn)
       object = GetLDAPEntry(dn)
-      return nil if object == nil
-      if object == {}
-        # OK, does not exist
-        return {}
-      end
+      return object if object.nil? || object == {}
       cls = Builtins.maplist(Ops.get_list(object, "objectClass", [])) do |c|
         Builtins.tolower(c)
       end
