@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Sep 25 10:21:52 UTC 2014 - varkoly@suse.com
+
+- bnc#897997 YaST2 User authentication not enumerating LDAP options
+- 3.1.13
+
+-------------------------------------------------------------------
 Tue Aug  5 13:02:04 UTC 2014 - varkoly@suse.com
 
 - Set member_attribute to 'member'. We only use rfc2307bis.schema
