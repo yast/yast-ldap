@@ -25,7 +25,7 @@ Source0:        %{name}-%{version}.tar.bz2
 
 Group:          System/YaST
 License:        GPL-2.0
-BuildRequires:	gcc-c++ libldapcpp-devel doxygen yast2-core-devel yast2 libtool yast2-network
+BuildRequires:	gcc-c++ libldapcpp-devel yast2-core-devel yast2 libtool
 BuildRequires:  yast2-devtools >= 3.1.10
 Summary:	YaST2 - LDAP Agent
 Requires: 	ldapcpplib yast2 yast2-network
