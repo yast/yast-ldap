@@ -443,8 +443,8 @@ module Yast
       @tls_cacert     = ReadLdapConfEntry("TLS_CACERT", "")
       @tls_cacertdir  = ReadLdapConfEntry("TLS_CACERTDIR", "")
       @bind_dn        = ReadLdapConfEntry("BINDDN","cn=Administrator," + @base_dn )
-      @base_config_dn = "ou=ldapconfig," +@base_dn
-      
+      @base_config_dn = "ou=ldapconfig," + @base_dn
+
       Builtins.y2milestone("Read LDAP Settings: server %1, base_dn %2, bind_dn %3, base_config_dn %4",@server, @base_dn, @bind_dn, @base_config_dn)
 
       true
@@ -453,7 +453,7 @@ module Yast
     # Dump the LDAP settings to a map based on /etc/openldap/slapd.conf
     # @return $["start":, "servers":[...], "domain":]
     def Export
-      e = {
+      {
         "start_ldap"       => @start,
         "ldap_server"      => @server,
         "ldap_domain"      => @base_dn,
