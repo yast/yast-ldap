@@ -408,14 +408,14 @@ module Yast
           # check the template required attributes...
           Builtins.foreach(Ops.get_list(template, "objectClass", [])) do |oc|
             next if cont
-            Builtins.foreach(Ldap.GetRequiredAttributes(oc)) do |attr2|
-              val = Ops.get(template, attr2)
+            Builtins.foreach(Ldap.GetRequiredAttributes(oc)) do |attr3|
+              val = Ops.get(template, attr3)
               if !cont && val == nil || val == [] || val == ""
                 #error popup, %1 is attribute name
                 Popup.Error(
                   Builtins.sformat(
                     _("The \"%1\" attribute is mandatory.\nEnter a value."),
-                    attr2
+                    attr3
                   )
                 )
                 UI.SetFocus(Id(:table))
