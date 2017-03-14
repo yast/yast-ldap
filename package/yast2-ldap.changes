@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Tue Mar 14 14:40:13 UTC 2017 - hguo@suse.com
+
+- Because usages of Yast::Ldap operate in the context of system
+  user management, hence let the configuration agent manipulate in
+  /etc/ldap.conf (system LDAP configuration) rather
+  /etc/openldap/ldap.conf (application LDAP configuration).
+  This resolves bsc#994456.
+  Bump version to 3.2.0.
+
+-------------------------------------------------------------------
 Tue Sep 20 15:05:49 UTC 2016 - jreidinger@suse.com
 
 - disable doc generation (FATE#320356)
