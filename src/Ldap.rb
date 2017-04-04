@@ -20,11 +20,12 @@
 # ------------------------------------------------------------------------------
 
 # File:        modules/Ldap.ycp
-# Module:        Configuration of LDAP client
-# Summary:        LDAP client configuration data, I/O functions.
-# Authors:        Peter Varkoly <varkoly@suse.com>
-#               Thorsten Kukuk <kukuk@suse.de>
-#                Anas Nashif <nashif@suse.de>
+# Module:      Configuration of LDAP client
+# Summary:     LDAP client configuration data, I/O functions.
+# Authors:     Howard Guo <hguo@suse.com>
+#              Peter Varkoly <varkoly@suse.com>
+#              Thorsten Kukuk <kukuk@suse.de>
+#              Anas Nashif <nashif@suse.de>
 #
 # $Id$
 require "yast"
@@ -91,7 +92,7 @@ module Yast
       # local settings modified?
       @modified = false
 
-      # /etc/openldap/ldap.conf modified?
+      # /etc/ldap.conf modified?
       @openldap_modified = false
 
       # base DN
@@ -316,7 +317,7 @@ module Yast
       @read_settings
     end
 
-    # Read single entry from /etc/openldap/ldap.conf file
+    # Read single entry from /etc/ldap.conf file
     # @param [String] entry entry name
     # @param [String] defvalue default value if entry is not present
     # @return entry value
@@ -333,7 +334,7 @@ module Yast
       value
     end
 
-    # Read multi-valued entry from /etc/openldap/ldap.conf file
+    # Read multi-valued entry from /etc/ldap.conf file
     # @param [String] entry entry name
     # @return entry value
     def ReadLdapConfEntries(entry)
@@ -347,7 +348,7 @@ module Yast
       end
     end
 
-    # Write (single valued) entry to /etc/openldap/ldap.conf
+    # Write (single valued) entry to /etc/ldap.conf
     # @param [String] entry name
     # @param [String] value; if value is nil, entry will be removed
     def WriteLdapConfEntry(entry, value)
@@ -355,10 +356,10 @@ module Yast
       nil
     end
 
-    # Write (possibly multi valued) entry to /etc/openldap/ldap.conf
+    # Write (possibly multi valued) entry to /etc/ldap.conf
     # @param [String] entry name
     # @param [Array<String>] value it is of type [attr1, attr2],
-    # in /etc/openldap/ldap.conf should be written as "entry attr1 attr2"
+    # in /etc/ldap.conf should be written as "entry attr1 attr2"
     # @example to write "nss_map_attribute       uniquemember member", call
     # WriteLdapConfEntries ("nss_map_attribute", ["uniquemember", "member"])
     def WriteLdapConfEntries(entry, value)
@@ -380,7 +381,7 @@ module Yast
       nil
     end
 
-    # Add a new value to the entry in /etc/openldap/ldap.conf
+    # Add a new value to the entry in /etc/ldap.conf
     # @param [String] entry name
     # @param [String] value
     def AddLdapConfEntry(entry, value)

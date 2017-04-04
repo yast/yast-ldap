@@ -27,7 +27,7 @@
 .ldap_conf
 
 `ag_ini(
-  `IniAgent( "/etc/openldap/ldap.conf" ,
+  `IniAgent( "/etc/ldap.conf" ,
     $[ "options" : ["global_values", "repeat_names","ignore_case"],
        "comments" : [ "^#.*", "^[ \t]*$", ],
        "params" : [
