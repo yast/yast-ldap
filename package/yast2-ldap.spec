@@ -58,3 +58,4 @@ an LDAP server.
 %{yast_plugindir}/libpy2ag_ldap.so
 %{yast_plugindir}/libpy2ag_ldap.la
 %doc %{yast_docdir}
+%license COPYING
