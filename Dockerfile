@@ -2,6 +2,7 @@ FROM yastdevel/cpp:sle12-sp5
 
 
 RUN zypper --gpg-auto-import-keys --non-interactive in --no-recommends \
-  libldapcpp-devel
+  libldapcpp-devel \
+  yast2-perl-bindings
 COPY . /usr/src/app
 
