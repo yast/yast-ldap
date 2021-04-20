@@ -436,6 +436,7 @@ module Yast
     # Reads LDAP settings from the SCR
     # @return success
     def Read
+      return true unless @read_settings
 
       @start          = Nsswitch.ReadDb("passwd").include?("sss")
       @server         = ReadLdapHosts()
@@ -446,6 +447,8 @@ module Yast
       @base_config_dn = "ou=ldapconfig," + @base_dn
 
       Builtins.y2milestone("Read LDAP Settings: server %1, base_dn %2, bind_dn %3, base_config_dn %4",@server, @base_dn, @bind_dn, @base_config_dn)
+
+      @read_settings = false
 
       true
     end
