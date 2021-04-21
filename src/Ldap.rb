@@ -436,6 +436,10 @@ module Yast
     # Reads LDAP settings from the SCR
     # @return success
     def Read
+      # Settings are read only if they were not read before. Anyway, reading settings can be forced if
+      # needed:
+      #   Ldap.SetReadSettings(true)
+      #   Ldap.Read
       return true unless @read_settings
 
       @start          = Nsswitch.ReadDb("passwd").include?("sss")
