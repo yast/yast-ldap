@@ -17,7 +17,7 @@
 
 
 Name:           yast2-ldap
-Version:        4.4.1
+Version:        4.5.0
 Release:        0
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
