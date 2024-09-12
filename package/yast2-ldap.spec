@@ -1,7 +1,7 @@
 #
 # spec file for package yast2-ldap
 #
-# Copyright (c) 2014 SUSE LINUX Products GmbH, Nuernberg, Germany.
+# Copyright (c) 2023 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -12,7 +12,7 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
+# Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
 
@@ -25,12 +25,18 @@ Source0:        %{name}-%{version}.tar.bz2
 
 Group:          System/YaST
 License:        GPL-2.0-only
-BuildRequires:	gcc-c++ libldapcpp-devel yast2-core-devel yast2 libtool
+BuildRequires:  gcc-c++
+BuildRequires:  libldapcpp-devel
+BuildRequires:  libtool
+BuildRequires:  yast2
+BuildRequires:  yast2-core-devel
 BuildRequires:  yast2-devtools >= 3.1.10
-Summary:	YaST2 - LDAP Agent
-Requires: 	ldapcpplib yast2 yast2-network
-Conflicts:	yast2-ldap-client < 3.1.5
+Summary:        YaST2 - LDAP Agent
+Requires:       ldapcpplib
+Requires:       yast2
+Requires:       yast2-network
 Conflicts:      yast2-auth-client < 3.1.6
+Conflicts:      yast2-ldap-client < 3.1.5
 
 %description
 This agent is used by various YaST2 modules to work with LDAP. It
@@ -46,7 +52,6 @@ an LDAP server.
 %install
 %yast_install
 
-
 %files
 %defattr(-,root,root)
 %{yast_moduledir}/*
@@ -59,3 +64,5 @@ an LDAP server.
 %{yast_plugindir}/libpy2ag_ldap.la
 %doc %{yast_docdir}
 %license COPYING
+
+%changelog
